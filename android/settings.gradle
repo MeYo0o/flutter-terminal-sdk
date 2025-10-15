@@ -1,0 +1,28 @@
+import org.gradle.api.initialization.resolve.RepositoriesMode
+
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+
+    // Specify com.android.library + version here:
+    plugins {
+        id "com.android.library" version "8.1.0"
+        id "org.jetbrains.kotlin.android" version "1.9.0"
+    }
+}
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+
+    repositories {
+        google()
+        mavenCentral()
+        maven {
+            url "https://developer.huawei.com/repo/"
+        }
+    }
+}
+rootProject.name = "flutter_terminal_sdk"
+include(":flutter_terminal_module")

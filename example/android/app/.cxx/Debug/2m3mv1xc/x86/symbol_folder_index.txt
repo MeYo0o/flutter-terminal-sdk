@@ -1,0 +1,1 @@
+/Users/osamadarabeh/StudioProjects/flutter-terminal-sdk/example/build/app/intermediates/cxx/Debug/2m3mv1xc/obj/x86
