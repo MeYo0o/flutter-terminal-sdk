@@ -1,8 +1,8 @@
-import 'package:flutter_terminal_sdk/models/terminal_response.dart';
 
 import '../errors/errors.dart';
 import '../flutter_terminal_sdk.dart';
 import 'data/terminal_merchant.dart';
+import 'terminal_response.dart';
 
 class TerminalConnectionModel {
   final String? name;
@@ -13,6 +13,7 @@ class TerminalConnectionModel {
   final bool isLocked;
   final bool hasProfile;
   final String userUUID;
+  final String? client;
   final TerminalMerchant? merchant;
 
   TerminalConnectionModel({
@@ -24,6 +25,7 @@ class TerminalConnectionModel {
     required this.isLocked,
     required this.hasProfile,
     required this.userUUID,
+    this.client,
     this.merchant,
   });
 
@@ -37,10 +39,26 @@ class TerminalConnectionModel {
       isLocked: json['isLocked'] as bool? ?? false,
       hasProfile: json['hasProfile'] as bool? ?? false,
       userUUID: json['userUUID'] as String,
+      client: json['client'],
       merchant: json['merchant'] != null
           ? TerminalMerchant.fromJson(json['merchant'] as Map<String, dynamic>)
           : null,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'name': name,
+      'tid': tid,
+      'uuid': uuid,
+      'busy': busy,
+      'mode': mode,
+      'isLocked': isLocked,
+      'hasProfile': hasProfile,
+      'userUUID': userUUID,
+      'client': client,
+      'merchant': merchant?.toJson(),
+    };
   }
 
   /// connectTerminal

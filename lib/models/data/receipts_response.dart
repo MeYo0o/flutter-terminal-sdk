@@ -1,5 +1,7 @@
 import 'dart:convert';
-
+import 'package:flutter/services.dart';
+import '../../errors/errors.dart';
+import '../../helper/helper.dart';
 import 'dto/approval_code.dart';
 import 'dto/currency_content.dart';
 import 'dto/card_scheme.dart';
@@ -67,6 +69,7 @@ class ReceiptDto {
 }
 
 class ReceiptData {
+  final MethodChannel _channel = const MethodChannel('nearpay_plugin');
   final String id;
   final mr.Merchant merchant;
   final String type;
@@ -155,6 +158,81 @@ class ReceiptData {
     required this.transactionUuid,
   });
 
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'merchant': merchant.toJson(),
+      'type': type,
+      'startDate': startDate,
+      'startTime': startTime,
+      'endDate': endDate,
+      'endTime': endTime,
+      'cardSchemeSponsor': cardSchemeSponsor,
+      'terminalId': terminalId,
+      'systemTraceAuditNumber': systemTraceAuditNumber,
+      'posSoftwareVersion': posSoftwareVersion,
+      'retrievalReferenceNumber': retrievalReferenceNumber,
+      'cardScheme': cardScheme.toJson(),
+      'transactionType': transactionType.toJson(),
+      'pan': pan,
+      'cardExpiration': cardExpiration,
+      'amountAuthorized': amountAuthorized.toJson(),
+      'amountOther': amountOther.toJson(),
+      'currency': currency.toJson(),
+      'statusMessage': statusMessage.toJson(),
+      'isApproved': isApproved,
+      'isRefunded': isRefunded,
+      'isReversed': isReversed,
+      'approvalCode': approvalCode.toJson(),
+      'verificationMethod': verificationMethod.toJson(),
+      'receiptLineOne': receiptLineOne.toJson(),
+      'receiptLineTwo': receiptLineTwo.toJson(),
+      'thanksMessage': thanksMessage.toJson(),
+      'saveReceiptMessage': saveReceiptMessage.toJson(),
+      'entryMode': entryMode,
+      'actionCode': actionCode,
+      'applicationIdentifier': applicationIdentifier,
+      'terminalVerificationResult': terminalVerificationResult,
+      'transactionStateInformation': transactionStateInformation,
+      'cardholderVerificationResult': cardholderVerificationResult,
+      'cryptogramInformationData': cryptogramInformationData,
+      'applicationCryptogram': applicationCryptogram,
+      'kernelId': kernelId,
+      'paymentAccountReference': paymentAccountReference,
+      'panSuffix': panSuffix,
+      'qrCode': qrCode,
+      'transactionUuid': transactionUuid,
+    };
+  }
+
+  Future<Uint8List> toImage({
+    int? receiptWidth,
+    int? fontSize,
+  }) async {
+    final receiptPayload = jsonEncode(toJson());
+
+    try {
+      final response = await callAndReturnMapResponse(
+        'toImage',
+        {
+          "receiptWidth": receiptWidth,
+          "fontSize": fontSize,
+          "receiptPayload": receiptPayload,
+        },
+        _channel,
+      );
+
+      if (response["status"] == "success") {
+        return base64Decode(response["imageData"]);
+      } else {
+        throw NearpayException(
+            response["message"] ?? "Convert to image failed");
+      }
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   factory ReceiptData.fromJson(Map<String, dynamic> json) {
     return ReceiptData(
       id: json['id'],
@@ -200,6 +278,7 @@ class ReceiptData {
       qrCode: json['qrCode'],
       transactionUuid: json['transactionUuid'],
     );
-  }
 
+    // create toJson method
+  }
 }

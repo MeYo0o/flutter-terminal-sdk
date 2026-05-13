@@ -1,8 +1,8 @@
 // payment_text.dart
 
 class PaymentText {
-  final String localizedPaymentText;
-  final String englishPaymentText;
+  final String? localizedPaymentText;
+  final String? englishPaymentText;
 
   const PaymentText({
     required this.localizedPaymentText,
@@ -11,8 +11,8 @@ class PaymentText {
 
   factory PaymentText.fromJson(Map<String, dynamic> json) {
     return PaymentText(
-      localizedPaymentText: json['localizedPaymentText'] as String,
-      englishPaymentText: json['englishPaymentText'] as String,
+      localizedPaymentText: json['localizedPaymentText'],
+      englishPaymentText: json['englishPaymentText'],
     );
   }
 
@@ -21,8 +21,7 @@ class PaymentText {
     String? englishPaymentText,
   }) {
     return PaymentText(
-      localizedPaymentText:
-      localizedPaymentText ?? this.localizedPaymentText,
+      localizedPaymentText: localizedPaymentText ?? this.localizedPaymentText,
       englishPaymentText: englishPaymentText ?? this.englishPaymentText,
     );
   }
@@ -30,5 +29,5 @@ class PaymentText {
   @override
   String toString() =>
       'PaymentText(localizedPaymentText: $localizedPaymentText, '
-          'englishPaymentText: $englishPaymentText)';
+      'englishPaymentText: $englishPaymentText)';
 }

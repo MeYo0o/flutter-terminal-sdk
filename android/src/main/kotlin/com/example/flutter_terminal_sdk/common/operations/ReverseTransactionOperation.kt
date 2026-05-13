@@ -18,9 +18,6 @@ class ReverseTransactionOperation(provider: NearpayProvider) : BaseOperation(pro
         val terminalUUID = filter.getString("terminalUUID")
             ?: return response(ResponseHandler.error("MISSING_UUID", "Terminal uuid is required"))
 
-        val transactionID = filter.getString("transactionID")
-            ?: return response(ResponseHandler.error("MISSING_transactionID", "transaction ID is required"))
-        // Extract required arguments
         val intentId = filter.getString("intentId")
             ?: return response(
                 ResponseHandler.error(
@@ -41,13 +38,11 @@ class ReverseTransactionOperation(provider: NearpayProvider) : BaseOperation(pro
                 )
         Timber.d("Got Terminal successfully ")
         Timber.d("intentId: $intentId")
-        Timber.d("transactionID: $transactionID")
 
         try {
             // Initiate the purchase process
             terminal.reverseTransaction(
                 intentId = intentId,
-                transactionID = transactionID,
                 reverseTransactionListener = object : ReverseTransactionListener {
 
 

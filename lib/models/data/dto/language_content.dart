@@ -17,4 +17,12 @@ class LanguageContent {
     );
   }
 
+  Map<String, dynamic> toJson() {
+    return {
+      'arabic': arabic,
+      'english': english,
+      'turkish': turkish,
+    };
+  }
+
 }

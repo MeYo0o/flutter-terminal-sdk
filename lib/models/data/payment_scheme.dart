@@ -1,7 +1,3 @@
-// file: lib/models/data/payment_scheme.dart
-
-// import 'package:flutter_terminal_sdk/models/data/reader_core_payment_card_scheme.dart';
-// import 'package:flutter_terminal_sdk/models/data/scheme.dart' as ReaderCorePaymentCardScheme;
 
 enum PaymentScheme {
   MADA,

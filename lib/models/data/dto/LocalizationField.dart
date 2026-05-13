@@ -1,8 +1,6 @@
-// localization_field.dart
-
 class LocalizationField {
-  final String arabic;
-  final String english;
+  final String? arabic;
+  final String? english;
 
   const LocalizationField({
     required this.arabic,
@@ -11,8 +9,8 @@ class LocalizationField {
 
   factory LocalizationField.fromJson(Map<String, dynamic> json) {
     return LocalizationField(
-      arabic: json['arabic'] as String,
-      english: json['english'] as String,
+      arabic: json['arabic'] ,
+      english: json['english'] ,
     );
   }
 
@@ -26,6 +24,12 @@ class LocalizationField {
     );
   }
 
+  Map<String, dynamic> toJson() {
+    return {
+      'arabic': arabic,
+      'english': english,
+    };
+  }
   @override
   String toString() =>
       'LocalizationField(arabic: $arabic, english: $english)';

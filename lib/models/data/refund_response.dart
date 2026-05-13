@@ -30,6 +30,14 @@ class RefundResponse {
     );
   }
 
+  // JSON serialization
+  Map<String, dynamic> toJson() {
+    return {
+      'details': details.toJson(),
+      'status': status,
+    };
+  }
+
   @override
   String toString() {
     return 'RefundResponse(details: $details, status: $status)';

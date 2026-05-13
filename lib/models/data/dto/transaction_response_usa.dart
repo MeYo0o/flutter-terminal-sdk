@@ -1,4 +1,3 @@
-
 import 'currency_content.dart';
 
 // Define the main response object
@@ -39,18 +38,7 @@ class TransactionResponseUSA {
 
     if (performanceList != null) {
       performanceItems = performanceList.map((item) {
-        // Ensure each item is a map
-        // if (item is Map<String, dynamic>) {
         return PerformanceDto.fromJson(item);
-        // } else {
-        //   print('Item is not a Map<String, dynamic>');
-        //   print("item $item");
-        //   print("item ${item.toString()}");
-        //   print("item ${item["timeStamp"]}");
-        //   print("item ${item["type"]}");
-        //   // Handle case when item is not a Map<String, dynamic>
-        //   return PerformanceDto(type: '', timeStamp: 0); // Placeholder or handle error
-        // }
       }).toList();
     }
 
@@ -136,26 +124,41 @@ class Receipt {
 class AuthorizeReceipt {
   final String rrn;
   final String tid;
+
   final CardInfo card;
   final List<MetaEntry> meta;
+
   final String stan;
   final String token;
-  final String amount;
-  final String endAt; // keep as ISO string
+
+  final String amount; // base amount
+  final String? tips; // ✅ added
+  final String? totalAmount; // ✅ added
+  final String? totalFees; // already existed (keep optional if backend can omit)
+
+  final String endAt; // ISO string
+  final String startAt; // ISO string
+
   final String status;
   final String version;
+
   final Currency currency;
   final Merchant merchant;
-  final String startAt; // keep as ISO string
+
   final String authCode;
-  final String totalFees;
   final String actionCode;
+
   final String receiptType;
   final String taxPercentage;
   final String surchargeAmount;
+
   final String transactionUuid;
+
   final AmountOnly amountAuthorized;
+
   final List<String> supportedLanguages;
+
+  final String? qrCode; // ✅ added
 
   const AuthorizeReceipt({
     required this.rrn,
@@ -165,6 +168,8 @@ class AuthorizeReceipt {
     required this.stan,
     required this.token,
     required this.amount,
+    this.tips,
+    this.totalAmount,
     required this.endAt,
     required this.status,
     required this.version,
@@ -180,6 +185,7 @@ class AuthorizeReceipt {
     required this.transactionUuid,
     required this.amountAuthorized,
     required this.supportedLanguages,
+    this.qrCode,
   });
 
   factory AuthorizeReceipt.fromJson(Map<String, dynamic> json) {
@@ -192,34 +198,54 @@ class AuthorizeReceipt {
           .toList(growable: false),
       stan: json['stan'] as String,
       token: json['token'] as String,
+
       amount: json['amount'] as String,
+      tips: json['tips'] as String?, // ✅
+      totalAmount: json['total_amount'] as String?, // ✅
+      totalFees: json['total_fees'] as String, // existing
+
       endAt: json['end_at'] as String,
+      startAt: json['start_at'] as String,
+
       status: json['status'] as String,
       version: json['version'] as String,
+
       currency: Currency.fromJson(json['currency'] as Map<String, dynamic>),
       merchant: Merchant.fromJson(json['merchant'] as Map<String, dynamic>),
-      startAt: json['start_at'] as String,
+
       authCode: json['auth_code'] as String,
-      totalFees: json['total_fees'] as String,
       actionCode: json['action_code'] as String,
+
       receiptType: json['receipt_type'] as String,
       taxPercentage: json['tax_percentage'] as String,
       surchargeAmount: json['surcharge_amount'] as String,
+
       transactionUuid: json['transaction_uuid'] as String,
+
       amountAuthorized:
       AmountOnly.fromJson(json['amount_authorized'] as Map<String, dynamic>),
-      supportedLanguages: (json['supported_languages'] as List<dynamic>? ?? const [])
+
+      supportedLanguages:
+      (json['supported_languages'] as List<dynamic>? ?? const [])
           .map((e) => e as String)
           .toList(growable: false),
+
+      qrCode: json['qr_code'] as String?, // ✅
     );
+  }
+
+  //add toString method
+  @override
+  String toString() {
+    return 'AuthorizeReceipt(rrn: $rrn, tid: $tid, card: $card, meta: $meta, stan: $stan, token: $token, amount: $amount, tips: $tips, totalAmount: $totalAmount, totalFees: $totalFees, endAt: $endAt, status: $status, version: $version, currency: $currency, merchant: $merchant, startAt: $startAt, authCode: $authCode, actionCode: $actionCode, receiptType: $receiptType, taxPercentage: $taxPercentage, surchargeAmount: $surchargeAmount, transactionUuid: $transactionUuid, amountAuthorized: $amountAuthorized, supportedLanguages: $supportedLanguages, qrCode: $qrCode)';
   }
 }
 
 class CardInfo {
-  final String exp;
-  final String pan;
-  final String brandCode;
-  final String panSuffix;
+  final String? exp;
+  final String? pan;
+  final String? brandCode;
+  final String? panSuffix;
 
   const CardInfo({
     required this.exp,
@@ -230,108 +256,178 @@ class CardInfo {
 
   factory CardInfo.fromJson(Map<String, dynamic> json) {
     return CardInfo(
-      exp: json['exp'] as String,
-      pan: json['pan'] as String,
-      brandCode: json['brand_code'] as String,
-      panSuffix: json['pan_suffix'] as String,
+      exp: json['exp'],
+      pan: json['pan'],
+      brandCode: json['brand_code'],
+      panSuffix: json['pan_suffix'],
     );
   }
 }
 
 class MetaEntry {
-  final String key;
-  final String value;
+  final String? key;
+  final String? value;
 
   const MetaEntry({required this.key, required this.value});
 
   factory MetaEntry.fromJson(Map<String, dynamic> json) {
     return MetaEntry(
-      key: json['key'] as String,
-      value: json['value'] as String,
+      key: json['key'],
+      value: json['value'],
     );
   }
 }
 
 class AmountOnly {
-  final String value;
+  final String? value;
 
   const AmountOnly({required this.value});
 
   factory AmountOnly.fromJson(Map<String, dynamic> json) {
     return AmountOnly(
-      value: json['value'] as String,
+      value: json['value'],
     );
   }
 }
 
-class Currency {
-  final String arabic;
-  final String english;
-
-  const Currency({required this.arabic, required this.english});
-
-  factory Currency.fromJson(Map<String, dynamic> json) {
-    return Currency(
-      arabic: json['arabic'] as String,
-      english: json['english'] as String,
-    );
-  }
-}
+// class Currency {
+//   final String? arabic;
+//   final String? english;
+//
+//   const Currency({required this.arabic, required this.english});
+//
+//   factory Currency.fromJson(Map<String, dynamic> json) {
+//     return Currency(
+//       arabic: json['arabic'],
+//       english: json['english'],
+//     );
+//   }
+// }
 
 class LocalizedText {
-  final String ar;
-  final String en;
+  final String? ar;
+  final String? en;
 
   const LocalizedText({required this.ar, required this.en});
 
   factory LocalizedText.fromJson(Map<String, dynamic> json) {
     return LocalizedText(
-      ar: json['ar'] as String,
-      en: json['en'] as String,
+      ar: json['ar'],
+      en: json['en'],
     );
   }
 }
 
 class Bank {
-  final String id;
-  final LocalizedText name;
+  final String? id;
+  final LocalizedText? name;
 
   const Bank({required this.id, required this.name});
 
   factory Bank.fromJson(Map<String, dynamic> json) {
     return Bank(
-      id: json['id'] as String,
-      name: LocalizedText.fromJson(json['name'] as Map<String, dynamic>),
+      id: json['id'],
+      name: json['name'] != null ? LocalizedText.fromJson(json['name']) : null,
     );
   }
 }
 
+// class Merchant {
+//   final String id;
+//   final String? mcc;
+//   final Bank? bank;
+//   final LocalizedText? name;
+//   final String? phone;
+//   final LocalizedText? address;
+//
+//   const Merchant({
+//     required this.id,
+//     this.mcc,
+//     this.bank,
+//     this.name,
+//     this.phone,
+//     this.address,
+//   });
+//
+//   factory Merchant.fromJson(Map<String, dynamic> json) {
+//     return Merchant(
+//       id: json['id'] as String ?? '',
+//       mcc: json['mcc'],
+//       bank: json['bank'] != null ? Bank.fromJson(json['bank']) : null,
+//       name: json['name'] != null ? LocalizedText.fromJson(json['name']) : null,
+//       phone: json['phone'],
+//       address: json['address'] != null
+//           ? LocalizedText.fromJson(json['address'])
+//           : null,
+//     );
+//   }
+// }
+
 class Merchant {
   final String id;
-  final String mcc;
-  final Bank bank;
-  final LocalizedText name;
-  final String phone;
-  final LocalizedText address;
+  final BankInfo? bank; // ✅
+  final Map<String, dynamic>? name; // JSON has `{}` sometimes
+  final Map<String, dynamic>? address; // JSON has `{}` sometimes
 
   const Merchant({
     required this.id,
-    required this.mcc,
-    required this.bank,
-    required this.name,
-    required this.phone,
-    required this.address,
+    this.bank,
+    this.name,
+    this.address,
   });
 
   factory Merchant.fromJson(Map<String, dynamic> json) {
     return Merchant(
       id: json['id'] as String,
-      mcc: json['mcc'] as String,
-      bank: Bank.fromJson(json['bank'] as Map<String, dynamic>),
-      name: LocalizedText.fromJson(json['name'] as Map<String, dynamic>),
-      phone: json['phone'] as String,
-      address: LocalizedText.fromJson(json['address'] as Map<String, dynamic>),
+      bank: json['bank'] != null
+          ? BankInfo.fromJson(json['bank'] as Map<String, dynamic>)
+          : null,
+      name: json['name'] as Map<String, dynamic>?,
+      address: json['address'] as Map<String, dynamic>?,
     );
   }
 }
+
+class BankInfo {
+  final String id;
+  final LocalizedName name;
+
+  const BankInfo({required this.id, required this.name});
+
+  factory BankInfo.fromJson(Map<String, dynamic> json) {
+    return BankInfo(
+      id: json['id'] as String,
+      name: LocalizedName.fromJson(json['name'] as Map<String, dynamic>),
+    );
+  }
+}
+
+class LocalizedName {
+  final String? ar;
+  final String? en;
+
+  const LocalizedName({this.ar, this.en});
+
+  factory LocalizedName.fromJson(Map<String, dynamic> json) {
+    return LocalizedName(
+      ar: json['ar'] as String?,
+      en: json['en'] as String?,
+    );
+  }
+}
+
+class Currency {
+  final String? english;
+  final String? arabic;
+
+  const Currency({this.english, this.arabic});
+
+  factory Currency.fromJson(Map<String, dynamic> json) {
+    return Currency(
+      english: json['english'] as String?,
+      arabic: json['arabic'] as String?, // ✅
+    );
+  }
+}
+
 

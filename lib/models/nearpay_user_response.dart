@@ -1,9 +1,9 @@
-import 'package:flutter_terminal_sdk/models/terminal_connection_response.dart';
-import 'package:flutter_terminal_sdk/models/terminal_response.dart';
 
 
 import '../errors/errors.dart';
 import '../flutter_terminal_sdk.dart';
+import 'data/TerminalList.dart';
+import 'terminal_connection_response.dart';
 
 class NearpayUser {
   final String? name;
@@ -39,7 +39,7 @@ class NearpayUser {
   }
 
   /// getTerminalList
-  Future<List<TerminalConnectionModel>> getTerminalList(
+  Future<TerminalList> getTerminalList(
       FlutterTerminalSdk sdk,
       ) async {
     if (userUUID == null || userUUID!.isEmpty) {

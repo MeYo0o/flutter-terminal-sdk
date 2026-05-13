@@ -53,7 +53,7 @@ class TransactionResponseTurkey {
 
     var eventList = json['events'] as List;
     List<Event> eventItems =
-        eventList.map((item) => Event.fromJson(item)).toList();
+    eventList.map((item) => Event.fromJson(item)).toList();
 
     return TransactionResponseTurkey(
       id: json['id'],
@@ -72,6 +72,26 @@ class TransactionResponseTurkey {
       events: eventItems,
       amountOther: json['amountOther'],
     );
+  }
+
+  // add to json
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'performance': performance,
+      'cancelReason': cancelReason,
+      'status': status,
+      'currency': currency,
+      'createdAt': createdAt,
+      'completedAt': completedAt,
+      'referenceId': referenceId,
+      'orderId': orderId,
+      'pinRequired': pinRequired,
+      'card': card,
+      'events': events,
+      'amountOther': amountOther,
+
+    };
   }
 }
 
@@ -105,6 +125,15 @@ class Event {
       status: json['status'],
     );
   }
+
+  // add to json
+  Map<String, dynamic> toJson() {
+    return {
+      'receipt': receipt,
+      'rrn': rrn,
+      'status': status,
+    };
+  }
 }
 
 // Define the Receipt class
@@ -119,12 +148,29 @@ class Receipt {
     required this.data,
   });
 
+
+  ReceiptDataTurkey getReceiptData() {
+    if (data == null) {
+      throw Exception("Data is null");
+    }
+    return ReceiptDataTurkey.fromJson(jsonDecode(data!));
+  }
+
   factory Receipt.fromJson(dynamic json) {
     return Receipt(
       standard: json['standard'],
       id: json['id'],
       data: json['data'],
     );
+  }
+
+  // add to json
+  Map<String, dynamic> toJson() {
+    return {
+      'standard': standard,
+      'id': id,
+      'data': data,
+    };
   }
 }
 
@@ -171,6 +217,14 @@ class ReceiptDataTurkey {
   final String? qrCode;
   final String? transactionStateInformation;
   final String? cardholderVerificationResult;
+  final String? replyMessage;
+  final String? replyMessageExplanation;
+
+  // ADD: installments support
+  final String? installmentAmount;
+  final int? installmentsCount;
+  final String? installmentCalculation;
+
 
   ReceiptDataTurkey({
     this.id,
@@ -215,73 +269,168 @@ class ReceiptDataTurkey {
     this.qrCode,
     this.transactionStateInformation,
     this.cardholderVerificationResult,
+    this.replyMessage,
+    this.replyMessageExplanation,
+    this.installmentAmount,
+    this.installmentsCount,
+    this.installmentCalculation,
   });
 
-  factory ReceiptDataTurkey.fromJson(dynamic json) {
+  factory ReceiptDataTurkey.fromJson(Map<String, dynamic> json) {
     return ReceiptDataTurkey(
-      id: json['id'],
-      pan: json['pan'],
-      tid: json['tid'],
-      type: json['type'],
-      date: json['date'],
-      time: json['time'],
-      cardType: json['card_type'],
+      id: json['id'] as String?,
+      pan: json['pan'] as String?,
+      tid: json['tid'] as String?,
+      type: json['type'] as String?,
+      date: json['date'] as String?,
+      time: json['time'] as String?,
+
+      cardType: json['card_type'] as String?,
+
       currency: json['currency'] != null
-          ? CurrencyContent.fromJson(json['currency'])
+          ? CurrencyContent.fromJson(json['currency'] as Map<String, dynamic>)
           : null,
-      merchant:
-          json['merchant'] != null ? Merchant.fromJson(json['merchant']) : null,
-      pinUsed: json['pinUsed'] != null
-          ? LocalizedText.fromJson(json['pin_used'])
+
+      merchant: json['merchant'] != null
+          ? Merchant.fromJson(json['merchant'] as Map<String, dynamic>)
           : null,
-      panSuffix: json['pan_suffix'],
-      acquirerId: json['acquirer_id'],
-      actionCode: json['action_code'],
-      cardScheme: json['card_scheme'],
-      cardDomain: json['card_domain'],
-      isApproved: json['is_approved'],
-      batchNumber: json['batch_number'],
-      acquirerName: json['acquirer_name'],
-      approvalCode: json['approval_code'],
-      serialNumber: json['serial_number'],
-      bankReference: json['bank_reference'],
-      deviceDetails: json['device_details'],
+
+      // FIX: use a consistent key. (Your JSON currently doesn't include it.)
+      // If backend uses "pin_used", keep this:
+      pinUsed: json['pin_used'] != null
+          ? LocalizedText.fromJson(json['pin_used'] as Map<String, dynamic>)
+          : null,
+
+      panSuffix: json['pan_suffix'] as String?,
+
+      acquirerId: json['acquirer_id'] as String?,
+      actionCode: json['action_code'] as String?,
+      cardScheme: json['card_scheme'] as String?,
+      cardDomain: json['card_domain'] as String?,
+      isApproved: json['is_approved'] as bool?,
+
+      batchNumber: json['batch_number'] as String?,
+      acquirerName: json['acquirer_name'] as String?,
+      approvalCode: json['approval_code'] as String?,
+      serialNumber: json['serial_number'] as String?,
+      bankReference: json['bank_reference'] as String?,
+      deviceDetails: json['device_details'] as String?,
+
       statusMessage: json['status_message'] != null
-          ? LocalizedText.fromJson(json['status_message'])
+          ? LocalizedText.fromJson(
+          json['status_message'] as Map<String, dynamic>)
           : null,
-      cardExpiration: json['card_expiration'],
-      transactionCode: json['transaction_code'],
+
+      cardExpiration: json['card_expiration'] as String?,
+      transactionCode: json['transaction_code'] as String?,
+
       transactionType: json['transaction_type'] != null
-          ? TransactionType.fromJson(json['transaction_type'])
+          ? TransactionType.fromJson(
+          json['transaction_type'] as Map<String, dynamic>)
           : null,
-      transactionUuid: json['transaction_uuid'],
+
+      transactionUuid: json['transaction_uuid'] as String?,
+
       amountAuthorized: json['amount_authorized'] != null
-          ? AmountAuthorized.fromJson(json['amount_authorized'])
+          ? AmountAuthorized.fromJson(
+          json['amount_authorized'] as Map<String, dynamic>)
           : null,
-      transactionNumber: json['transaction_number'],
+
+      // ADD: installments support (present in your JSON)
+      installmentAmount: json['installment_amount'] as String?,
+      installmentsCount: (json['installments_count'] as num?)?.toInt(),
+      installmentCalculation: json['installment_calculation'] as String?,
+
+      transactionNumber: json['transaction_number'] as String?,
+
       actionCodeMessage: json['action_code_message'] != null
-          ? LocalizedText.fromJson(json['action_code_message'])
+          ? LocalizedText.fromJson(
+          json['action_code_message'] as Map<String, dynamic>)
           : null,
-      cardSchemeSponsor: json['card_scheme_sponsor'],
+
+      cardSchemeSponsor: json['card_scheme_sponsor'] as String?,
+
       transactionDetails: json['transaction_details'] != null
-          ? LocalizedText.fromJson(json['transaction_details'])
+          ? LocalizedText.fromJson(
+          json['transaction_details'] as Map<String, dynamic>)
           : null,
-      applicationCryptogram: json['application_cryptogram'],
-      applicationIdentifier: json['application_identifier'],
-      paymentAccountReference: json['payment_account_reference'],
-      systemTraceAuditNumber: json['system_trace_audit_number'],
-      retrievalReferenceNumber: json['retrieval_reference_number'],
-      cryptogramInformationData: json['cryptogram_information_data'],
-      posSoftwareVersionNumber: json['pos_software_version_number'],
-      qrCode: json['qr_code'],
-      transactionStateInformation: json['transaction_state_information'],
-      cardholderVerificationResult: json['cardholder_verification_result'],
+
+      applicationCryptogram: json['application_cryptogram'] as String?,
+      applicationIdentifier: json['application_identifier'] as String?,
+
+      paymentAccountReference: json['payment_account_reference'] as String?,
+
+      systemTraceAuditNumber: json['system_trace_audit_number'] as String?,
+      retrievalReferenceNumber: json['retrieval_reference_number'] as String?,
+
+      cryptogramInformationData: json['cryptogram_information_data'] as String?,
+
+      posSoftwareVersionNumber: json['pos_software_version_number'] as String?,
+      qrCode: json['qr_code'] as String?,
+
+      transactionStateInformation: json['transaction_state_information'] as String?,
+      cardholderVerificationResult: json['cardholder_verification_result'] as String?,
+
+      replyMessage: json['reply_message'],
+      replyMessageExplanation: json['reply_message_explanation'],
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'pan': pan,
+      'tid': tid,
+      'type': type,
+      'date': date,
+      'time': time,
+      'card_type': cardType,
+      'currency': currency,
+      'merchant': merchant,
+      'pin_used': pinUsed,
+      'pan_suffix': panSuffix,
+      'acquirer_id': acquirerId,
+      'action_code': actionCode,
+      'card_scheme': cardScheme,
+      'card_domain': cardDomain,
+      'is_approved': isApproved,
+      'batch_number': batchNumber,
+      'acquirer_name': acquirerName,
+      'approval_code': approvalCode,
+      'serial_number': serialNumber,
+      'bank_reference': bankReference,
+      'device_details': deviceDetails,
+      'status_message': statusMessage,
+      'card_expiration': cardExpiration,
+      'transaction_code': transactionCode,
+      'transaction_type': transactionType,
+      'transaction_uuid': transactionUuid,
+      'amount_authorized': amountAuthorized,
+      'transaction_number': transactionNumber,
+      'action_code_message': actionCodeMessage,
+      'card_scheme_sponsor': cardSchemeSponsor,
+      'transaction_details': transactionDetails,
+      'application_cryptogram': applicationCryptogram,
+      'application_identifier': applicationIdentifier,
+      'payment_account_reference': paymentAccountReference,
+      'system_trace_audit_number': systemTraceAuditNumber,
+      'retrieval_reference_number': retrievalReferenceNumber,
+      'cryptogram_information_data': cryptogramInformationData,
+      'pos_software_version_number': posSoftwareVersionNumber,
+      'qr_code': qrCode,
+      'transaction_state_information': transactionStateInformation,
+      'cardholder_verification_result': cardholderVerificationResult,
+      'reply_message': replyMessage,
+      'reply_message_explanation': replyMessageExplanation,
+      'installment_amount': installmentAmount,
+      'installments_count': installmentsCount,
+      'installment_calculation': installmentCalculation,
+    };
   }
 
   @override
   String toString() {
-    return 'ReceiptDataTurkey(id: $id, pan: $pan, tid: $tid, type: $type, date: $date, time: $time, cardType: $cardType, currency: $currency, merchant: $merchant, pinUsed: $pinUsed, panSuffix: $panSuffix, acquirerId: $acquirerId, actionCode: $actionCode, cardScheme: $cardScheme, cardDomain: $cardDomain, isApproved: $isApproved, batchNumber: $batchNumber, acquirerName: $acquirerName, approvalCode: $approvalCode, serialNumber: $serialNumber, bankReference: $bankReference, deviceDetails: $deviceDetails, statusMessage: $statusMessage, cardExpiration: $cardExpiration, transactionCode: $transactionCode, transactionType: $transactionType, transactionUuid: $transactionUuid, amountAuthorized: $amountAuthorized, transactionNumber: $transactionNumber, actionCodeMessage: $actionCodeMessage, cardSchemeSponsor: $cardSchemeSponsor, transactionDetails: $transactionDetails, applicationCryptogram: $applicationCryptogram, applicationIdentifier: $applicationIdentifier, paymentAccountReference: $paymentAccountReference, systemTraceAuditNumber: $systemTraceAuditNumber, retrievalReferenceNumber: $retrievalReferenceNumber, cryptogramInformationData: $cryptogramInformationData, posSoftwareVersionNumber: $posSoftwareVersionNumber, qrCode: $qrCode, transactionStateInformation: $transactionStateInformation, cardholderVerificationResult: $cardholderVerificationResult)';
+    return 'ReceiptDataTurkey(id: $id, pan: $pan, tid: $tid, type: $type, date: $date, time: $time, cardType: $cardType, currency: $currency, merchant: $merchant, pinUsed: $pinUsed, panSuffix: $panSuffix, acquirerId: $acquirerId, actionCode: $actionCode, cardScheme: $cardScheme, cardDomain: $cardDomain, isApproved: $isApproved, batchNumber: $batchNumber, acquirerName: $acquirerName, approvalCode: $approvalCode, serialNumber: $serialNumber, bankReference: $bankReference, deviceDetails: $deviceDetails, statusMessage: $statusMessage, cardExpiration: $cardExpiration, transactionCode: $transactionCode, transactionType: $transactionType, transactionUuid: $transactionUuid, amountAuthorized: $amountAuthorized, transactionNumber: $transactionNumber, actionCodeMessage: $actionCodeMessage, cardSchemeSponsor: $cardSchemeSponsor, transactionDetails: $transactionDetails, applicationCryptogram: $applicationCryptogram, applicationIdentifier: $applicationIdentifier, paymentAccountReference: $paymentAccountReference, systemTraceAuditNumber: $systemTraceAuditNumber, retrievalReferenceNumber: $retrievalReferenceNumber, cryptogramInformationData: $cryptogramInformationData, posSoftwareVersionNumber: $posSoftwareVersionNumber, qrCode: $qrCode, transactionStateInformation: $transactionStateInformation, cardholderVerificationResult: $cardholderVerificationResult , replyMessage: $replyMessage, replyMessageExplanation: $replyMessageExplanation, installmentAmount: $installmentAmount, installmentsCount: $installmentsCount, installmentCalculation: $installmentCalculation)';
   }
 }
 
@@ -304,6 +453,15 @@ class Merchant {
       address: json['address'],
     );
   }
+
+  // add to json
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'address': address,
+    };
+  }
 }
 
 // Define the LocalizedText class
@@ -321,6 +479,14 @@ class LocalizedText {
       english: json['english'],
       turkish: json['turkish'],
     );
+  }
+
+  // add to json
+  Map<String, dynamic> toJson() {
+    return {
+      'english': english,
+      'turkish': turkish,
+    };
   }
 }
 
@@ -340,6 +506,14 @@ class TransactionType {
       name: LocalizedText.fromJson(json['name']),
     );
   }
+
+  // add to json
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+    };
+  }
 }
 
 // Define the AmountAuthorized class
@@ -357,5 +531,13 @@ class AmountAuthorized {
       label: LocalizedText.fromJson(json['label']),
       value: json['value'],
     );
+  }
+
+  // add to json
+  Map<String, dynamic> toJson() {
+    return {
+      'label': label,
+      'value': value,
+    };
   }
 }

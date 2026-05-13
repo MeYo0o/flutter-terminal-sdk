@@ -1,6 +1,9 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_terminal_sdk/flutter_terminal_sdk.dart';
 import 'package:flutter_terminal_sdk/models/authorized_callbacks.dart';
+import 'package:flutter_terminal_sdk/models/capture_authorization_with_tap_callbacks.dart';
 import 'package:flutter_terminal_sdk/models/card_reader_callbacks.dart';
 import 'package:flutter_terminal_sdk/models/data/authorize_response.dart';
 import 'package:flutter_terminal_sdk/models/data/dto/transaction_response_turkey.dart';
@@ -8,16 +11,22 @@ import 'package:flutter_terminal_sdk/models/data/payment_scheme.dart';
 import 'package:flutter_terminal_sdk/models/data/purchase_response.dart';
 import 'package:flutter_terminal_sdk/models/data/refund_response.dart';
 import 'package:flutter_terminal_sdk/models/data/transaction_response.dart';
+import 'package:flutter_terminal_sdk/models/data/ui_dock_position.dart';
 import 'package:flutter_terminal_sdk/models/intents_list_response.dart';
 import 'package:flutter_terminal_sdk/models/nearpay_user_response.dart';
+import 'package:flutter_terminal_sdk/models/open_refund_callbacks.dart';
 import 'package:flutter_terminal_sdk/models/purchase_callbacks.dart';
 import 'package:flutter_terminal_sdk/models/purchase_void_callbacks.dart';
+import 'package:flutter_terminal_sdk/models/purchase_with_qr_callbacks.dart';
 import 'package:flutter_terminal_sdk/models/refund_callbacks.dart';
 import 'package:flutter_terminal_sdk/models/refund_void_callbacks.dart';
 import 'package:flutter_terminal_sdk/models/terminal_connection_response.dart';
 import 'package:flutter_terminal_sdk/models/terminal_response.dart';
+import 'package:flutter_terminal_sdk/models/terminal_sdk_initialization_listener.dart';
+import 'package:flutter_terminal_sdk_example/sst.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
+
+// import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
 
 // lunch url
@@ -45,7 +54,6 @@ class _PluginExampleState extends State<PluginExample> {
   final FlutterTerminalSdk _terminalSdk = FlutterTerminalSdk();
 
   String _status = "Ready";
-  String _statusQRcode = "";
   String? transactionUuid;
   String? intentId;
   String? authTransactionUuid;
@@ -53,6 +61,10 @@ class _PluginExampleState extends State<PluginExample> {
   bool? isConnected = false;
   String? refundUuid;
   String? reconcileId;
+  PurchaseResponse? purchaseResponse;
+
+  //logoBytes
+  Uint8List? logoBytes;
 
   // _prefs
   late SharedPreferences _prefs;
@@ -66,14 +78,14 @@ class _PluginExampleState extends State<PluginExample> {
   Future<void> loadTerminalFromPrefs() async {
     final tid = _prefs.getString('terminal_tid');
     final uuid = _prefs.getString('terminal_uuid');
-    final terminal_name = _prefs.getString('terminal_name');
+    final terminalName = _prefs.getString('terminal_name');
 
-    if (tid != null && uuid != null && terminal_name != null) {
+    if (tid != null && uuid != null && terminalName != null) {
       // If we have saved terminal info, connect to it
       // create a TerminalConnectionModel
       _connectedTerminal = TerminalModel(
         tid: tid,
-        name: terminal_name,
+        name: terminalName,
         terminalUUID: uuid,
       );
     }
@@ -92,8 +104,16 @@ class _PluginExampleState extends State<PluginExample> {
   final TextEditingController _otpController = TextEditingController(text: "");
   final TextEditingController _amountController =
       TextEditingController(text: "");
+  final TextEditingController _tipAmountController =
+      TextEditingController(text: "");
+  final TextEditingController _numberOfInstallmentsController =
+      TextEditingController(text: "");
   final TextEditingController result = TextEditingController(text: "");
   final TextEditingController _jwtController = TextEditingController(text: "");
+  final TextEditingController _imageWidthController =
+      TextEditingController(text: "");
+  final TextEditingController _fontSizeController =
+      TextEditingController(text: "");
 
   PaymentScheme _selectedScheme = PaymentScheme.VISA;
 
@@ -108,12 +128,25 @@ class _PluginExampleState extends State<PluginExample> {
     try {
       setState(() => _status = "Initializing...");
       await _terminalSdk.initialize(
-        environment: Environment.sandbox,
-        googleCloudProjectNumber: 0, // Add your google cloud project number
-        huaweiSafetyDetectApiKey: "", // Add your huawei safety detect api key
-        country: Country.tr,
+          environment: Environment.sandbox,
+          googleCloudProjectNumber: 0,
+          // huaweiSafetyDetectApiKey: "",
+          country: Country.sa,
+          pinPosition: UiDockPosition.BOTTOM_RIGHT,
+          uiDockPosition: UiDockPosition.BOTTOM_RIGHT,
+          supportSecondDisplay: SupportSecondDisplay.enable,
+          secondDisplayDockPosition: UiDockPosition.TOP_CENTER,
+          // initializationListener: TerminalSDKInitializationListener(
+          //   onInitializationSuccess: () {
+          //     print("SDK Initialization Success");
+          //     setState(() => _status = "SDK Initialization Success");
+          //   },
+          //   onInitializationFailure: (message) {
+          //     print("SDK Initialization Failure: $message");
+          //     setState(() => _status = "SDK Initialization Failure: $message");
+          //   },
+          // )
       );
-
       setState(() => _status = "SDK Initialized ");
     } catch (e) {
       setState(() => _status = "Error initializing: $e");
@@ -234,7 +267,6 @@ class _PluginExampleState extends State<PluginExample> {
       // save terminalModel to _sharedPreferences
 
       saveTerminalToPrefs(terminalModel);
-
       setState(() {
         _connectedTerminal = terminalModel;
         _status = "jwt verified! terminal: ${terminalModel.toString()}";
@@ -373,10 +405,10 @@ class _PluginExampleState extends State<PluginExample> {
     try {
       setState(() => _status = "Fetching terminals...");
       print("_verifiedUser!.userUUID! ${_verifiedUser!.userUUID}");
-      final fetchedTerminals = await _terminalSdk
+      final terminalList = await _terminalSdk
           .getTerminalList(_verifiedUser!.userUUID!, page: 1, pageSize: 10);
       setState(() {
-        _terminals = fetchedTerminals;
+        _terminals = terminalList.terminals;
         _status = "Fetched ${_terminals.length} terminals";
       });
     } catch (e) {
@@ -417,10 +449,12 @@ class _PluginExampleState extends State<PluginExample> {
       return;
     }
 
-    var config = await _connectedTerminal?.getTerminalConfig();
+    final config = await _connectedTerminal!.getTerminalConfig();
 
     setState(() {
-      _status = "Terminal config = $config";
+      _status = "Terminal config: ${config.currencyNumericCode} / "
+          "${config.currencyDefaultFractionDigits} decimals, "
+          "${config.schemes.length} scheme(s)";
     });
   }
 
@@ -441,7 +475,7 @@ class _PluginExampleState extends State<PluginExample> {
 
       setState(() => _status = "get Terminal Terminal...");
       final fetchedTerminal = await _terminalSdk.getTerminal(
-        terminalUUID: _connectedTerminal!.terminalUUID,
+        terminalUUID: _connectedTerminal!.terminalUUID!,
       );
 
       setState(() {
@@ -466,21 +500,15 @@ class _PluginExampleState extends State<PluginExample> {
       return;
     }
 
-    if (transactionUuid == null) {
-      setState(() => _status = "No transaction to reverse.");
-      return;
-    }
-
     if (intentId == null) {
       setState(() => _status = "No intentId to reverse.");
       return;
     }
 
-    print("transactionUuid $transactionUuid");
     print("intentId $intentId");
     try {
-      final reverseResponse = await _connectedTerminal!.reverseTransaction(
-          transactionID: transactionUuid!, intentId: intentId!);
+      final reverseResponse =
+          await _connectedTerminal!.reverseTransaction(intentId: intentId!);
       setState(() => _status =
           "reverse Successful! ${reverseResponse.details.transactions?[0].id}");
     } catch (e) {
@@ -532,10 +560,9 @@ class _PluginExampleState extends State<PluginExample> {
     // }
 
     try {
-      setState(() => _status = "Connecting to terminal ${tid}...");
+      setState(() => _status = "Connecting to terminal $tid...");
 
-      print(
-          "terminal.tid ${tid} terminal.uuid ${terminalUuid} userUUID ${userUUID}");
+      print("terminal.tid $tid terminal.uuid $terminalUuid userUUID $userUUID");
 
       final connectedTerminal = await _terminalSdk.connectTerminal(
         tid: tid,
@@ -551,6 +578,26 @@ class _PluginExampleState extends State<PluginExample> {
       });
     } catch (e) {
       setState(() => _status = "Error connecting: $e");
+    }
+  }
+
+  // convert receipt to image
+  Future<void> _convertReceiptToImage() async {
+    try {
+      var width = _imageWidthController.text.trim();
+      var font = _fontSizeController.text.trim();
+
+      var image =
+          await purchaseResponse?.getLastReceipt()?.getMadaReceipt().toImage(
+                receiptWidth: width.isNotEmpty ? int.parse(width) : 384,
+                fontSize: font.isNotEmpty ? int.parse(font) : 12,
+              );
+
+      setState(() {
+        logoBytes = image;
+      });
+    } catch (e) {
+      print("Error converting receipt to image: $e");
     }
   }
 
@@ -584,6 +631,10 @@ class _PluginExampleState extends State<PluginExample> {
 
       // Define the callbacks for purchase events
       transactionUuid = const Uuid().v4();
+      intentId = const Uuid().v4();
+
+      print("transactionUuid $transactionUuid");
+      print("intentId $intentId");
 
       // var isTerminalReadyCheck = await _connectedTerminal?.isTerminalReady();
       // print("isTerminalReadyCheck: $isTerminalReadyCheck");
@@ -593,11 +644,15 @@ class _PluginExampleState extends State<PluginExample> {
       // }
 
       await _connectedTerminal!.purchase(
-        intentUUID: transactionUuid!,
+        intentUUID: intentId!,
         amount: amount,
-        customerReferenceNumber: "Me2025-customerReferenceNumber",
+        customerReferenceNumber: intentId,
         callbacks: PurchaseCallbacks(
           cardReaderCallbacks: CardReaderCallbacks(
+            onReaderDismissed: () {
+              setState(() => _status = "Reader dismissed...");
+              print("Reader dismissed...");
+            },
             onReaderDisplayed: () {
               setState(() => _status = "Reader displayed...");
               print("Reader displayed...");
@@ -647,15 +702,284 @@ class _PluginExampleState extends State<PluginExample> {
             print("Transaction failed message: $message");
             setState(() => _status = "Transaction failed: $message");
           },
-          onTransactionPurchaseCompleted: (PurchaseResponse response) {
+          onTransactionPurchaseCompleted: (PurchaseResponse response) async {
+            print("NotDismissReaderUi");
+
+            // _connectedTerminal?.dismissReaderUi();
             if (response.getLastTransaction() != null) {
               // _showTransactionDialog(response.getLastTransaction()!);
+              purchaseResponse = response;
               print(
                   "Purchase Successful Mada receipt:  ${response.getLastReceipt()?.getBKMReceipt().toString()}");
               print(
                   "Purchase Successful isApproved:  ${response.getLastReceipt()?.getBKMReceipt().transactionUuid}");
               print(
-                  "url qr : ${response.getLastReceipt()?.getBKMReceipt().qrCode}");
+                  "Purchase Successful installments:  ${response.getLastReceipt()?.getBKMReceipt().installmentAmount} "
+                  "${response.getLastReceipt()?.getBKMReceipt().installmentsCount} ${response.getLastReceipt()?.getBKMReceipt().installmentCalculation}");
+              print(
+                  "actionCode : ${response.getLastReceipt()?.getBKMReceipt().replyMessage}");
+              print(
+                  "actionCode : ${response.getLastReceipt()?.getBKMReceipt().replyMessageExplanation}");
+              print(
+                  "Purchase Successful actionCode: ${response.getLastReceipt()?.getBKMReceipt().actionCode}");
+              print(
+                  "Purchase Successful actionCodeMessage:  ${response.getLastReceipt()?.getBKMReceipt().actionCodeMessage}");
+              print(
+                  "Purchase Successful isApproved:  ${response.getLastReceipt()?.getBKMReceipt().isApproved}");
+
+              // intient id
+              print("Intent ID: ${response.details?.intentId}");
+
+              print("transaction id: ${response.getLastTransaction()?.id}");
+
+              print(
+                  "transaction orderId: ${response.getLastTransaction()!.orderId}");
+
+              print(
+                  "transaction referenceId: ${response.getLastTransaction()!.referenceId}");
+
+              setState(() {
+                intentId = response.details?.intentId;
+                transactionUuid = response.getLastTransaction()!.id;
+              });
+              setState(() => _status =
+                  "Purchase Successful! ${response.status}: ${response.getLastTransaction()!.id}  -- ${response.getLastReceipt()?.getBKMReceipt().replyMessage} ");
+              setState(() {
+                result.text = response.getLastReceipt()!.data.toString();
+              });
+            } else {
+              setState(() => _status =
+                  "Purchase Failed! No transaction found in response.");
+            }
+          },
+        ),
+      );
+    } catch (e) {
+      setState(() => _status = "Error in purchase: $e");
+    }
+  }
+
+  Future<void> _purchaseWithQr() async {
+    if (!_terminalSdk.isInitialized) {
+      setState(() => _status = "SDK not initialized yet");
+      return;
+    }
+
+    if (_connectedTerminal == null) {
+      setState(() => _status =
+          "No connected terminal. Please connect to a terminal first.");
+      return;
+    }
+
+    final amountText = _amountController.text.trim();
+    if (amountText.isEmpty) {
+      setState(() => _status = "Please enter an amount.");
+      return;
+    }
+
+    // final amount = int.tryParse(amountText);
+    // if (amount == null) {
+    //   setState(() => _status = "Invalid amount entered.");
+    //   return;
+    // }
+
+    try {
+      setState(() => _status = "Purchasing with qr...");
+
+      // Define the callbacks for purchase events
+      var id = const Uuid().v4();
+
+      print("id $id");
+
+      // var isTerminalReadyCheck = await _connectedTerminal?.isTerminalReady();
+      // print("isTerminalReadyCheck: $isTerminalReadyCheck");
+      // if (isTerminalReadyCheck == false) {
+      //   setState(() => _status = "Terminal is not ready");
+      //   return;
+      // }
+
+      await _connectedTerminal!.generateQrCodeWithUi(
+        customerReferenceNumber: id,
+        id: id,
+        amount: amountText,
+        enableUiDismiss: true,
+        callbacks: PurchaseWithQrCallbacks(
+          onQrUiPresented: (qrData) {
+            setState(() => _status = "$_status QR UI Presented...");
+            print("QR UI Presented...");
+          },
+          onQrPaymentApproved: (response) {
+            setState(() => _status =
+                "$_status QR Payment Approved! Transaction ID: ${response}");
+            print("QR Payment Approved! Transaction ID: ${response}");
+            _connectedTerminal?.dismissReaderUi();
+          },
+          onQrPaymentDeclined: (response) {
+            setState(() => _status =
+                "$_status QR Payment Declined! Transaction ID: ${response}");
+            print("QR Payment Declined! Transaction ID: ${response}");
+          },
+          onQrPaymentFailure: (message) {
+            setState(() => _status = "$_status QR Payment Failure: $message");
+            print("QR Payment Failure: $message");
+          },
+          onParsingFailed: (message) {
+            setState(() => _status = "$_status QR Parsing Failed: $message");
+            print("QR Parsing Failed: $message");
+          },
+          onQrPaymentStatusCompleted: (status) {
+            setState(() => _status =
+                "$_status QR Payment Status Completed: \n ${status.receipt?.getBKMReceipt().isApproved}");
+            print("QR Payment Status Completed: $status");
+            _connectedTerminal?.dismissReaderUi();
+          },
+          onQrPaymentStatusExpired: (status) {
+            setState(() =>
+                _status = "$_status \n QR Payment Status Expired: $status");
+            print("QR Payment Status Expired: $status");
+            _connectedTerminal?.dismissReaderUi();
+          },
+          onQrPaymentStatusFailed: (status) {
+            setState(() =>
+                _status = "$_status \n QR Payment Status Failed: $status");
+            print("QR Payment Status Failed: $status");
+            _connectedTerminal?.dismissReaderUi();
+          },
+          onQrPaymentStatusUpdated: (status) {
+            setState(() =>
+                _status = "$_status \n QR Payment Status Updated: $status");
+            print("QR Payment Status Updated: $status");
+          },
+          onQrUiClosed: () {
+            setState(() => _status = "$_status QR UI Closed");
+            print("QR UI Closed");
+          },
+        ),
+      );
+    } catch (e) {
+      setState(() => _status = "Error in purchase: $e");
+    }
+  }
+
+  /// Example purchase
+  Future<void> _purchaseWithTip() async {
+    if (!_terminalSdk.isInitialized) {
+      setState(() => _status = "SDK not initialized yet");
+      return;
+    }
+
+    if (_connectedTerminal == null) {
+      setState(() => _status =
+          "No connected terminal. Please connect to a terminal first.");
+      return;
+    }
+
+    final amountText = _amountController.text.trim();
+    if (amountText.isEmpty) {
+      setState(() => _status = "Please enter an amount.");
+      return;
+    }
+
+    final amount = int.tryParse(amountText);
+    if (amount == null) {
+      setState(() => _status = "Invalid amount entered.");
+      return;
+    }
+
+    final tipAmountText = _tipAmountController.text.trim();
+    if (tipAmountText.isEmpty) {
+      setState(() => _status = "Please enter an tip Amount.");
+      return;
+    }
+
+    final tipAmount = int.tryParse(tipAmountText);
+    if (tipAmount == null) {
+      setState(() => _status = "Invalid tip amount entered.");
+      return;
+    }
+
+    try {
+      setState(() => _status = "Purchasing...");
+
+      // Define the callbacks for purchase events
+      intentId = const Uuid().v4();
+
+      print("intentId $intentId");
+
+      await _connectedTerminal!.purchaseWithTip(
+        intentUUID: intentId!,
+        amount: amount,
+        amountOther: tipAmount,
+        customerReferenceNumber: intentId,
+        callbacks: PurchaseCallbacks(
+          cardReaderCallbacks: CardReaderCallbacks(
+            onReaderDismissed: () {
+              setState(() => _status = "Reader dismissed...");
+              print("Reader dismissed...");
+            },
+            onReaderDisplayed: () {
+              setState(() => _status = "Reader displayed...");
+              print("Reader displayed...");
+            },
+            onReaderClosed: () {
+              // setState(() => _status = "Reader closed...");
+              print("Reader closed...");
+            },
+            onReadingStarted: () {
+              setState(() => _status = "Reading started...");
+              print("Reading started...");
+            },
+            onReaderWaiting: () {
+              setState(() => _status = "Reader waiting...");
+              print("Reader waiting...");
+            },
+            onReaderReading: () {
+              setState(() => _status = "Reader reading...");
+              print("Reader reading...");
+            },
+            onReaderRetry: () {
+              setState(() => _status = "Reader retrying...");
+              print("Reader retrying...");
+            },
+            onPinEntering: () {
+              setState(() => _status = "Entering PIN...");
+              print("Entering PIN...");
+            },
+            onReaderFinished: () {
+              setState(() => _status = "Reader finished.");
+              print("Reader finished...");
+            },
+            onReaderError: (message) {
+              print("Reader error: $message");
+              setState(() => _status = "Reader error: $message");
+            },
+            onCardReadSuccess: () {
+              print("Card read successfully.");
+              setState(() => _status = "Card read successfully.");
+            },
+            onCardReadFailure: (message) {
+              setState(() => _status = "Card read failure: $message");
+              print("Card read failure: $message");
+            },
+          ),
+          onSendTransactionFailure: (message) {
+            print("Transaction failed message: $message");
+            setState(() => _status = "Transaction failed: $message");
+          },
+          onTransactionPurchaseCompleted: (PurchaseResponse response) async {
+            print("NotDismissReaderUi");
+            // _connectedTerminal?.dismissReaderUi();
+            if (response.getLastTransaction() != null) {
+              // _showTransactionDialog(response.getLastTransaction()!);
+              purchaseResponse = response;
+              print(
+                  "Purchase Successful Mada receipt:  ${response.getLastReceipt()?.getBKMReceipt().toString()}");
+              print(
+                  "Purchase Successful isApproved:  ${response.getLastReceipt()?.getBKMReceipt().transactionUuid}");
+              print(
+                  "actionCode : ${response.getLastReceipt()?.getBKMReceipt().replyMessage}");
+              print(
+                  "actionCode : ${response.getLastReceipt()?.getBKMReceipt().replyMessageExplanation}");
               print(
                   "Purchase Successful actionCode: ${response.getLastReceipt()?.getBKMReceipt().actionCode}");
               print(
@@ -677,10 +1001,173 @@ class _PluginExampleState extends State<PluginExample> {
                 transactionUuid = response.getLastTransaction()!.id;
               });
               setState(() => _status =
-                  "Purchase Successful! ${response.getLastTransaction()!.id} ${response.getLastReceipt()?.getBKMReceipt().qrCode} ");
+                  "Purchase Successful! ${response.status}: ${response.getLastTransaction()!.id}  -- ${response.getLastReceipt()?.getBKMReceipt().replyMessage} ");
               setState(() {
-                _statusQRcode =
-                    "${response.getLastReceipt()?.getBKMReceipt().qrCode}";
+                result.text = response.getLastReceipt()!.data.toString();
+              });
+            } else {
+              setState(() => _status =
+                  "Purchase Failed! No transaction found in response.");
+            }
+          },
+        ),
+      );
+    } catch (e) {
+      setState(() => _status = "Error in purchase: $e");
+    }
+  }
+
+  /// Example purchase
+  Future<void> _installmentPurchase() async {
+    if (!_terminalSdk.isInitialized) {
+      setState(() => _status = "SDK not initialized yet");
+      return;
+    }
+
+    if (_connectedTerminal == null) {
+      setState(() => _status =
+          "No connected terminal. Please connect to a terminal first.");
+      return;
+    }
+
+    final amountText = _amountController.text.trim();
+    if (amountText.isEmpty) {
+      setState(() => _status = "Please enter an amount.");
+      return;
+    }
+
+    final amount = int.tryParse(amountText);
+    if (amount == null) {
+      setState(() => _status = "Invalid amount entered.");
+      return;
+    }
+
+    final numberOfInstallmentsText =
+        _numberOfInstallmentsController.text.trim();
+    if (numberOfInstallmentsText.isEmpty) {
+      setState(() => _status = "Please enter an tip Amount.");
+      return;
+    }
+
+    final numberOfInstallments = int.tryParse(numberOfInstallmentsText);
+    if (numberOfInstallments == null) {
+      setState(() => _status = "Invalid number of installments entered.");
+      return;
+    }
+
+    try {
+      setState(() => _status = "Purchasing installments...");
+
+      // Define the callbacks for purchase events
+      intentId = const Uuid().v4();
+
+      print("intentId $intentId");
+
+      await _connectedTerminal!.installments(
+        intentUUID: intentId!,
+        amount: amount,
+        numberOfInstallments: numberOfInstallments,
+        customerReferenceNumber: intentId,
+        callbacks: PurchaseCallbacks(
+          cardReaderCallbacks: CardReaderCallbacks(
+            onReaderDismissed: () {
+              setState(() => _status = "Reader dismissed...");
+              print("Reader dismissed...");
+            },
+            onReaderDisplayed: () {
+              setState(() => _status = "Reader displayed...");
+              print("Reader displayed...");
+            },
+            onReaderClosed: () {
+              // setState(() => _status = "Reader closed...");
+              print("Reader closed...");
+            },
+            onReadingStarted: () {
+              setState(() => _status = "Reading started...");
+              print("Reading started...");
+            },
+            onReaderWaiting: () {
+              setState(() => _status = "Reader waiting...");
+              print("Reader waiting...");
+            },
+            onReaderReading: () {
+              setState(() => _status = "Reader reading...");
+              print("Reader reading...");
+            },
+            onReaderRetry: () {
+              setState(() => _status = "Reader retrying...");
+              print("Reader retrying...");
+            },
+            onPinEntering: () {
+              setState(() => _status = "Entering PIN...");
+              print("Entering PIN...");
+            },
+            onReaderFinished: () {
+              setState(() => _status = "Reader finished.");
+              print("Reader finished...");
+            },
+            onReaderError: (message) {
+              print("Reader error: $message");
+              setState(() => _status = "Reader error: $message");
+            },
+            onCardReadSuccess: () {
+              print("Card read successfully.");
+              setState(() => _status = "Card read successfully.");
+            },
+            onCardReadFailure: (message) {
+              setState(() => _status = "Card read failure: $message");
+              print("Card read failure: $message");
+            },
+          ),
+          onSendTransactionFailure: (message) {
+            print("Transaction failed message: $message");
+            setState(() => _status = "Transaction failed: $message");
+          },
+          onTransactionPurchaseCompleted: (PurchaseResponse response) async {
+            print("NotDismissReaderUi");
+            // _connectedTerminal?.dismissReaderUi();
+            if (response.getLastTransaction() != null) {
+              // _showTransactionDialog(response.getLastTransaction()!);
+              purchaseResponse = response;
+              print(
+                  "Purchase Successful Mada receipt:  ${response.getLastReceipt()?.getBKMReceipt().toString()}");
+              print(
+                  "Purchase Successful isApproved:  ${response.getLastReceipt()?.getBKMReceipt().transactionUuid}");
+              print(
+                  "Purchase Successful installments:  ${response.getLastReceipt()?.getBKMReceipt().installmentAmount} "
+                  "${response.getLastReceipt()?.getBKMReceipt().installmentsCount} ${response.getLastReceipt()?.getBKMReceipt().installmentCalculation}");
+              print(
+                  "actionCode : ${response.getLastReceipt()?.getBKMReceipt().replyMessage}");
+              print(
+                  "actionCode : ${response.getLastReceipt()?.getBKMReceipt().replyMessageExplanation}");
+
+              print(
+                  "actionCode : ${response.getLastReceipt()?.getBKMReceipt().replyMessage}");
+              print(
+                  "actionCode : ${response.getLastReceipt()?.getBKMReceipt().replyMessageExplanation}");
+              print(
+                  "Purchase Successful actionCode: ${response.getLastReceipt()?.getBKMReceipt().actionCode}");
+              print(
+                  "Purchase Successful actionCodeMessage:  ${response.getLastReceipt()?.getBKMReceipt().actionCode}");
+
+              // intient id
+              print("Intent ID: ${response.details?.intentId}");
+
+              print("transaction id: ${response.getLastTransaction()?.id}");
+
+              print(
+                  "transaction orderId: ${response.getLastTransaction()!.orderId}");
+
+              print(
+                  "transaction referenceId: ${response.getLastTransaction()!.referenceId}");
+
+              setState(() {
+                intentId = response.details?.intentId;
+                transactionUuid = response.getLastTransaction()!.id;
+              });
+              setState(() => _status =
+                  "Purchase Successful! ${response.status}: ${response.getLastTransaction()!.id}  -- ${response.getLastReceipt()?.getBKMReceipt().replyMessage} ");
+              setState(() {
                 result.text = response.getLastReceipt()!.data.toString();
               });
             } else {
@@ -803,7 +1290,41 @@ class _PluginExampleState extends State<PluginExample> {
                 Text(
                     "Action Code Message: ${response.events?[0].receipt?.getBKMReceipt().actionCode}"),
                 Text(
-                    "receipt BKM: ${response.events?[0].receipt?.getBKMReceipt().id ?? 'N/A'}"),
+                    "receipt BKM: ${response.events?[0].receipt?.getBKMReceipt().merchant ?? 'N/A'}"),
+                // Add more fields as needed
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text("OK"),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showOpenRefundTransactionDialog(RefundResponse response) {
+    var receipt = response.getLastReceipt();
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text("Transaction Successful"),
+          content: SingleChildScrollView(
+            child: ListBody(
+              children: <Widget>[
+                Text("ID: ${receipt?.id}"),
+                Text("Is Approved: ${receipt?.getBKMReceipt().isApproved}"),
+                Text("Action Code: ${receipt?.getBKMReceipt().actionCode}"),
+                Text(
+                    "Action Code Message: ${receipt?.getBKMReceipt().actionCode}"),
+                Text(
+                    "receipt BKM: ${receipt?.getBKMReceipt().merchant ?? 'N/A'}"),
                 // Add more fields as needed
               ],
             ),
@@ -877,7 +1398,27 @@ class _PluginExampleState extends State<PluginExample> {
                       Text("Created At: ${e.createdAt}"),
                       Text("Completed At: ${e.completedAt}"),
                       Text("Cancelled At: ${e.cancelledAt}"),
-                      // Add more fields as needed
+                      // show list of transactions
+                      Column(
+                        children: e.transactions!.map((tx) {
+                          return Container(
+                            margin: const EdgeInsets.only(top: 5),
+                            padding: const EdgeInsets.all(5),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.blueAccent),
+                              borderRadius: BorderRadius.circular(5),
+                            ),
+                            child: Column(children: [
+                              Text("  Transaction ID: ${tx.uuid}"),
+                              Text("  Amount: ${tx.amountAuthorized}"),
+                              Text("  Status: ${tx.isApproved}"),
+                              Text("  isReversed: ${tx.isReversed}"),
+                              Text(
+                                  "  customerReferenceNumber: ${tx.customerReferenceNumber}")
+                            ]),
+                          );
+                        }).toList(),
+                      ),
                     ],
                   ),
                 );
@@ -897,6 +1438,82 @@ class _PluginExampleState extends State<PluginExample> {
     );
   }
 
+  /// Example open refund
+  Future<void> _openRefund() async {
+    if (!_terminalSdk.isInitialized) {
+      setState(() => _status = "SDK not initialized yet");
+      return;
+    }
+
+    final amountText = _amountController.text.trim();
+    if (amountText.isEmpty) {
+      setState(() => _status = "Please enter an amount for refund.");
+      return;
+    }
+
+    final amount = int.tryParse(amountText);
+    if (amount == null) {
+      setState(() => _status = "Invalid amount entered.");
+      return;
+    }
+
+    var intentId = const Uuid().v4();
+    try {
+      setState(() => _status = "Open Refunding...");
+      final result = await _connectedTerminal?.openRefund(
+        intentUUID: intentId,
+        amount: amount,
+        callbacks: OpenRefundCallbacks(
+          cardReaderCallbacks: CardReaderCallbacks(
+            onReadingStarted: () {
+              setState(() => _status = "Reading started...");
+            },
+            onReaderWaiting: () {
+              setState(() => _status = "Reader waiting...");
+            },
+            onReaderReading: () {
+              setState(() => _status = "Reader reading...");
+            },
+            onReaderRetry: () {
+              setState(() => _status = "Reader retrying...");
+            },
+            onPinEntering: () {
+              setState(() => _status = "Entering PIN...");
+            },
+            onReaderFinished: () {
+              setState(() => _status = "Reader finished.");
+            },
+            onReaderError: (message) {
+              setState(() => _status = "Reader error: $message");
+            },
+            onCardReadSuccess: () {
+              setState(() => _status = "Card read successfully.");
+            },
+            onCardReadFailure: (message) {
+              setState(() => _status = "Card read failure: $message");
+            },
+          ),
+          onTransactionOpenRefundCompleted: (RefundResponse response) {
+            if (response.getLastTransaction() == null) {
+              setState(() => _status =
+                  "Open Refund Failed! No transaction found in response.");
+              return;
+            }
+            _showOpenRefundTransactionDialog(response);
+            setState(() => _status =
+                "Open Refund Successful! ${response.getLastReceipt()?.getBKMReceipt().actionCode} ${response.getLastReceipt()?.getBKMReceipt().amountAuthorized} ${response.getLastReceipt()?.getBKMReceipt().isApproved}");
+          },
+          onSendTransactionFailure: (message) {
+            setState(() => _status = "Refund failed: $message");
+          },
+        ),
+      );
+      setState(() => _status = "Open Refund Successful: ${result.toString()}");
+    } catch (e) {
+      setState(() => _status = "Error in refund: $e");
+    }
+  }
+
   /// Example refund
   Future<void> _refund() async {
     if (!_terminalSdk.isInitialized) {
@@ -905,8 +1522,8 @@ class _PluginExampleState extends State<PluginExample> {
     }
 
     // Ensure that you have a valid transactionUuid. This example uses a placeholder.
-    if (transactionUuid == null) {
-      setState(() => _status = "No transaction to refund.");
+    if (intentId == null) {
+      setState(() => _status = "No intentId to refund.");
       return;
     }
     final amountText = _amountController.text.trim();
@@ -920,17 +1537,22 @@ class _PluginExampleState extends State<PluginExample> {
       setState(() => _status = "Invalid amount entered.");
       return;
     }
-    try {
-      refundUuid = const Uuid().v4();
+    refundUuid = const Uuid().v4();
 
+    try {
       setState(() => _status = "Refunding...");
       final result = await _connectedTerminal?.refund(
         refundUuid: refundUuid!,
         intentUUID: intentId!,
         amount: amount,
-        scheme: _selectedScheme,
+        // scheme: _selectedScheme,
+        //onReaderClosed
         callbacks: RefundCallbacks(
           cardReaderCallbacks: CardReaderCallbacks(
+            onReaderClosed: () {
+              print("Reader closed...");
+              setState(() => _status = "Reader closed...");
+            },
             onReadingStarted: () {
               setState(() => _status = "Reading started...");
             },
@@ -967,7 +1589,7 @@ class _PluginExampleState extends State<PluginExample> {
             }
             _showTransactionDialog(response.getLastTransaction()!);
             setState(() => _status =
-                "Refund Successful! ${response.getLastReceipt()?.getBKMReceipt().id} ${response.getLastReceipt()?.getBKMReceipt().amountAuthorized} ${response.getLastReceipt()?.getBKMReceipt().isApproved}");
+                "Refund Successful! ${response.getLastReceipt()?.getBKMReceipt().actionCode} ${response.getLastReceipt()?.getBKMReceipt().amountAuthorized} ${response.getLastReceipt()?.getBKMReceipt().isApproved}");
           },
           onSendTransactionFailure: (message) {
             setState(() => _status = "Refund failed: $message");
@@ -987,11 +1609,6 @@ class _PluginExampleState extends State<PluginExample> {
       return;
     }
 
-    // Ensure that you have a valid transactionUuid. This example uses a placeholder.
-    if (transactionUuid == null) {
-      setState(() => _status = "No transaction to refund.");
-      return;
-    }
     final amountText = _amountController.text.trim();
     if (amountText.isEmpty) {
       setState(() => _status = "Please enter an amount for refund.");
@@ -1003,10 +1620,20 @@ class _PluginExampleState extends State<PluginExample> {
       setState(() => _status = "Invalid amount entered.");
       return;
     }
+
+    if (intentId == null) {
+      setState(() => _status = "No intentId to refund.");
+      return;
+    }
+
+    // if (refundUuid == null) {
+    //   setState(() => _status = "No refundUuid to refund.");
+    //   return;
+    // }
     try {
       setState(() => _status = "Refunding...");
       final result = await _connectedTerminal?.refundVoid(
-        refundUuid: refundUuid!,
+        intentUUID: intentId!,
         amount: amount,
         scheme: _selectedScheme,
         callbacks: RefundVoidCallbacks(
@@ -1093,10 +1720,12 @@ class _PluginExampleState extends State<PluginExample> {
       final result = await _connectedTerminal?.getIntentList(
         page: 1,
         pageSize: 10,
+        // startDate: "2025-09-27 18:00:00.000",
+        // endDate: "2025-10-04 18:00:00.000",
       );
       _showTransactionListDialog(result!);
 
-      setState(() => _status = "GetTransactions Successful: ${result}");
+      setState(() => _status = "GetTransactions Successful: $result");
     } catch (e) {
       setState(() => _status = "Error in getTransactions: $e");
     }
@@ -1185,6 +1814,8 @@ class _PluginExampleState extends State<PluginExample> {
                 Text("TID: ${terminal.tid}"),
                 Text("UUID: ${terminal.uuid}"),
                 Text("Merchant UUID: ${terminal.merchant.toString()}"),
+                Text("client: ${terminal.client}"),
+                Text("user uuid: ${terminal.userUUID}"),
               ],
             ),
             onTap: () => _connectToTerminal(terminal),
@@ -1240,7 +1871,7 @@ class _PluginExampleState extends State<PluginExample> {
       setState(() => _status = "Please enter an amount.");
       return;
     }
-
+// amount is long
     final amount = int.tryParse(amountText);
     if (amount == null) {
       setState(() => _status = "Invalid amount entered.");
@@ -1262,7 +1893,7 @@ class _PluginExampleState extends State<PluginExample> {
 
       await _connectedTerminal!.authorize(
         uuid: transactionUuid!,
-        amount: amount, //default 1.00
+        amount: amount,
         customerReferenceNumber: "Me2025-customerReferenceNumber",
         callbacks: AuthorizedCallbacks(
           cardReaderCallbacks: CardReaderCallbacks(
@@ -1311,9 +1942,9 @@ class _PluginExampleState extends State<PluginExample> {
               authIntentId = response.details?.intentId;
             });
             print(
-                "Authorize Successful isApproved:  ${response.getLastReceipt()?.getEPXReceipt().status}");
+                "Authorize Successful isApproved:  ${response.getLastReceipt()?.getBKMReceipt().isApproved}");
             print(
-                "Authorize Successful Mada receipt:  ${response.getLastReceipt()?.getEPXReceipt().toString()}");
+                "Authorize Successful Mada receipt:  ${response.getLastReceipt()?.getBKMReceipt().toString()}");
 
             setState(() => _status =
                 "Authorize Successful! ${response.getLastTransaction()!.id} ${response.getLastTransaction()!.amountOther} ");
@@ -1383,11 +2014,11 @@ class _PluginExampleState extends State<PluginExample> {
     super.dispose();
   }
 
-  Future<void> _launchUrl(url) async {
-    if (!await launchUrl(url)) {
-      throw Exception('Could not launch $url');
-    }
-  }
+  // Future<void> _launchUrl(url) async {
+  //   if (!await launchUrl(url)) {
+  //     throw Exception('Could not launch $url');
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -1400,33 +2031,38 @@ class _PluginExampleState extends State<PluginExample> {
         child: Expanded(
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Text("Status: $_status", style: const TextStyle(fontSize: 16)),
-              const SizedBox(height: 20),
-              Text("other: $_statusQRcode",
-                  style: const TextStyle(fontSize: 16)),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                  onPressed: () {
-                    _launchUrl(_statusQRcode);
-                  },
-                  child: Text("open link : $_statusQRcode ")),
-              TextField(
-                controller: result,
-                keyboardType: TextInputType.text,
+              if (logoBytes != null)
+                Image.memory(
+                  logoBytes!,
+                  height: 400,
+                  fit: BoxFit.contain,
+                  gaplessPlayback: true, // <- prevents flicker when bytes swap
+                ),
+              // Usage example in a build method:
+              ScrollableSizedText(
+                text: _status,
+                fontSize: 18,
+                height: 200,
+                // fixed height -> enables scrolling when content overflows
+                width: double.infinity,
+                // optional
+                selectable: true, // optional
               ),
               const SizedBox(height: 20),
               Expanded(
                 child: SingleChildScrollView(
                   child: Column(
                     children: [
-                      const SizedBox(height: 20),
-                      ElevatedButton(
-                        onPressed: () async {
-                          await loadTerminalFromPrefs();
-                        },
-                        child: const Text("loadTerminalFromPrefs"),
-                      ),
+                      // const SizedBox(height: 20),
+                      // ElevatedButton(
+                      //   onPressed: () async {
+                      //     await loadTerminalFromPrefs();
+                      //   },
+                      //   child: const Text("loadTerminalFromPrefs"),
+                      // ),
                       const SizedBox(height: 20),
                       ElevatedButton(
                         onPressed: () async {
@@ -1437,20 +2073,30 @@ class _PluginExampleState extends State<PluginExample> {
                         child: const Text("Initialize SDK"),
                       ),
                       const SizedBox(height: 20),
-                      ElevatedButton(
-                        onPressed: _requestPermissions,
-                        child: const Text("Check Permission"),
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            ElevatedButton(
+                              onPressed: _requestPermissions,
+                              child: const Text("Check Permission"),
+                            ),
+                            const SizedBox(width: 5),
+                            ElevatedButton(
+                              onPressed: _checkNfc,
+                              child: const Text("Check NFC"),
+                            ),
+                            const SizedBox(width: 5),
+                            ElevatedButton(
+                              onPressed: _checkWifi,
+                              child: const Text("Check WIFI"),
+                            ),
+                          ],
+                        ),
                       ),
-                      const SizedBox(height: 20),
-                      ElevatedButton(
-                        onPressed: _checkNfc,
-                        child: const Text("Check NFC"),
-                      ),
-                      const SizedBox(height: 20),
-                      ElevatedButton(
-                        onPressed: _checkWifi,
-                        child: const Text("Check WIFI"),
-                      ),
+
                       const SizedBox(height: 20),
                       TextField(
                         controller: _mobileController,
@@ -1580,7 +2226,7 @@ class _PluginExampleState extends State<PluginExample> {
                                                 print(
                                                     "voidAuthorization: ${voidInfo.toString()}");
                                                 setState(() => _status =
-                                                    "authorizeVoid Successful: ${voidInfo.getLastReceipt()?.getEPXReceipt().transactionUuid}");
+                                                    "authorizeVoid Successful: ${voidInfo.getLastReceipt()?.getBKMReceipt().transactionUuid}");
                                               } catch (e) {
                                                 setState(() => _status =
                                                     "Error in authorizeVoid: $e");
@@ -1594,13 +2240,19 @@ class _PluginExampleState extends State<PluginExample> {
                                       ? ElevatedButton(
                                           onPressed: () async {
                                             if (_connectedTerminal != null) {
-                                              await _connectedTerminal!
-                                                  .incrementAuthorization(
+                                              var info =
+                                                  await _connectedTerminal!
+                                                      .incrementAuthorization(
                                                 uuid: const Uuid().v4(),
                                                 authorizationUuid:
                                                     authIntentId ?? "",
-                                                amount: 2000.0,
+                                                amount: 2000,
                                               );
+
+                                              print(
+                                                  "incrementAuthorization: ${info.toString()}");
+                                              setState(() => _status =
+                                                  "incrementAuthorization Successful: ${info.getLastReceipt()?.getBKMReceipt().transactionUuid}");
                                             }
                                           },
                                           child: Text(
@@ -1608,20 +2260,120 @@ class _PluginExampleState extends State<PluginExample> {
                                         )
                                       : const SizedBox(),
                                   authIntentId != null
-                                      ? ElevatedButton(
-                                          onPressed: () async {
-                                            if (_connectedTerminal != null) {
-                                              await _connectedTerminal!
-                                                  .captureAuthorization(
-                                                authorizationUuid:
-                                                    authIntentId ?? "",
-                                                amount: 3000,
-                                                uuid: const Uuid().v4(),
-                                              );
-                                            }
-                                          },
-                                          child: Text(
-                                              "captureAuthorization ${_connectedTerminal?.tid}"))
+                                      ? Column(
+                                          children: [
+                                            ElevatedButton(
+                                                onPressed: () async {
+                                                  if (_connectedTerminal !=
+                                                      null) {
+                                                    var response =
+                                                        await _connectedTerminal!
+                                                            .captureAuthorization(
+                                                      authorizationUuid:
+                                                          authIntentId ?? "",
+                                                      amount: 3000,
+                                                      uuid: const Uuid().v4(),
+                                                    );
+
+                                                    print(
+                                                        "captureAuthorization: ${response.toString()}");
+                                                    setState(() => _status =
+                                                        "captureAuthorization Successful: ${response.getLastReceipt()?.getBKMReceipt().transactionUuid}");
+                                                  }
+                                                },
+                                                child: Text(
+                                                    "captureAuthorization ${_connectedTerminal?.tid}")),
+                                            const SizedBox(height: 10),
+                                            ElevatedButton(
+                                                onPressed: () async {
+                                                  if (_connectedTerminal !=
+                                                      null) {
+                                                    await _connectedTerminal!
+                                                        .captureAuthorizationWithTap(
+                                                      authorizationUuid:
+                                                          authIntentId ?? "",
+                                                      amount: 3000,
+                                                      uuid: const Uuid().v4(),
+                                                      callbacks:
+                                                          CaptureAuthorizationWithTapCallbacks(
+                                                        cardReaderCallbacks:
+                                                            CardReaderCallbacks(
+                                                          onReaderDisplayed:
+                                                              () {
+                                                            setState(() => _status =
+                                                                "Reader displayed...");
+                                                            print(
+                                                                "Reader displayed...");
+                                                          },
+                                                          onReaderClosed: () {
+                                                            // setState(() => _status = "Reader closed...");
+                                                            print(
+                                                                "Reader closed...");
+                                                          },
+                                                          onReadingStarted: () {
+                                                            setState(() => _status =
+                                                                "Reading started...");
+                                                          },
+                                                          onReaderWaiting: () {
+                                                            setState(() => _status =
+                                                                "Reader waiting...");
+                                                          },
+                                                          onReaderReading: () {
+                                                            setState(() => _status =
+                                                                "Reader reading...");
+                                                          },
+                                                          onReaderRetry: () {
+                                                            setState(() => _status =
+                                                                "Reader retrying...");
+                                                          },
+                                                          onPinEntering: () {
+                                                            setState(() => _status =
+                                                                "Entering PIN...");
+                                                          },
+                                                          onReaderFinished: () {
+                                                            setState(() => _status =
+                                                                "Reader finished.");
+                                                          },
+                                                          onReaderError:
+                                                              (message) {
+                                                            print(
+                                                                "Reader error: $message");
+                                                            setState(() => _status =
+                                                                "Reader error: $message");
+                                                          },
+                                                          onCardReadSuccess:
+                                                              () {
+                                                            setState(() => _status =
+                                                                "Card read successfully.");
+                                                          },
+                                                          onCardReadFailure:
+                                                              (message) {
+                                                            setState(() => _status =
+                                                                "Card read failure: $message");
+                                                          },
+                                                        ),
+                                                        onAuthorizedResponseWithTapCompleted:
+                                                            (response) {
+                                                          print(
+                                                              "Transaction Completed: $response");
+                                                          setState(() => _status =
+                                                              "captureAuthorizationWithTap Successful: ${response.getLastReceipt()?.getBKMReceipt().transactionUuid}");
+                                                        },
+                                                        onSendTransactionFailure:
+                                                            (message) {
+                                                          print(
+                                                              "Transaction Failed: $message");
+                                                          setState(() => _status =
+                                                              "captureAuthorizationWithTap Failed: $message");
+                                                        },
+                                                      ),
+                                                    );
+                                                  }
+                                                },
+                                                child: Text(
+                                                    "captureAuthorizationWithTap ${_connectedTerminal?.tid}")),
+                                          ],
+                                        )
                                       : const SizedBox(),
                                 ],
                               )
@@ -1644,6 +2396,25 @@ class _PluginExampleState extends State<PluginExample> {
                         ),
                       ),
                       const SizedBox(height: 10),
+                      // Purchase inputs
+                      TextField(
+                        controller: _tipAmountController,
+                        keyboardType: TextInputType.number, // Correct placement
+                        decoration: const InputDecoration(
+                          labelText: "Tip Amount",
+                          hintText: "5000",
+                        ),
+                      ),
+                      const SizedBox(height: 10), // Purchase inputs
+                      TextField(
+                        controller: _numberOfInstallmentsController,
+                        keyboardType: TextInputType.number, // Correct placement
+                        decoration: const InputDecoration(
+                          labelText: "Number of Installments",
+                          hintText: "4",
+                        ),
+                      ),
+                      const SizedBox(height: 10),
                       DropdownButtonFormField<PaymentScheme>(
                         decoration: const InputDecoration(
                           labelText: "Payment Scheme",
@@ -1662,11 +2433,61 @@ class _PluginExampleState extends State<PluginExample> {
                         },
                       ),
                       const SizedBox(height: 20),
-                      // get getPendingTotal
-                      const SizedBox(height: 20),
                       ElevatedButton(
                         onPressed: _purchase,
                         child: const Text("Purchase"),
+                      ),
+                      const SizedBox(height: 20),
+                      ElevatedButton(
+                        onPressed: _purchaseWithQr,
+                        child: const Text("PurchaseWithQr"),
+                      ),
+                      const SizedBox(height: 20),
+                      ElevatedButton(
+                        onPressed: () {
+                          _connectedTerminal?.dismissReaderUi();
+                        },
+                        child: const Text("Dismiss Reader UI"),
+                      ),
+                      const SizedBox(height: 20),
+                      ElevatedButton(
+                        onPressed: _purchaseWithTip,
+                        child: const Text("PurchaseWithTip"),
+                      ),
+                      const SizedBox(height: 20),
+                      ElevatedButton(
+                        onPressed: _installmentPurchase,
+                        child: const Text("installment Purchase"),
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _imageWidthController,
+                              keyboardType: TextInputType.number,
+                              decoration: const InputDecoration(
+                                labelText: "Image Width",
+                                hintText: "600",
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: TextField(
+                              controller: _fontSizeController,
+                              keyboardType: TextInputType.number,
+                              decoration: const InputDecoration(
+                                labelText: "Font Size",
+                                hintText: "12",
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      ElevatedButton(
+                        onPressed: _convertReceiptToImage,
+                        child: const Text("convert receipt to image"),
                       ),
                       const SizedBox(height: 20),
                       ElevatedButton(
@@ -1677,6 +2498,11 @@ class _PluginExampleState extends State<PluginExample> {
                       ElevatedButton(
                         onPressed: _refund,
                         child: const Text("Refund"),
+                      ),
+                      const SizedBox(height: 20),
+                      ElevatedButton(
+                        onPressed: _openRefund,
+                        child: const Text("OpenRefund"),
                       ),
                       const SizedBox(height: 20),
                       ElevatedButton(
@@ -1713,6 +2539,7 @@ class _PluginExampleState extends State<PluginExample> {
                         onPressed: _reconcile,
                         child: const Text("Reconcile"),
                       ),
+                      const SizedBox(height: 40),
                     ],
                   ),
                 ),
@@ -1726,8 +2553,8 @@ class _PluginExampleState extends State<PluginExample> {
 
   void saveTerminalToPrefs(TerminalModel terminalModel) {
     // Save terminal details to SharedPreferences
-    _prefs.setString('terminal_uuid', terminalModel.terminalUUID);
-    _prefs.setString('terminal_tid', terminalModel.tid);
+    _prefs.setString('terminal_uuid', terminalModel.terminalUUID ?? "");
+    _prefs.setString('terminal_tid', terminalModel.tid ?? "");
     _prefs.setString('terminal_name', terminalModel.name ?? '');
   }
 }

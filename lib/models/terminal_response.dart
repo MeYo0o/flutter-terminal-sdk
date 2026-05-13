@@ -1,56 +1,73 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_terminal_sdk/models/data/Intent_details.dart';
 import 'package:flutter_terminal_sdk/models/data/reconciliation_list_response.dart';
 import 'package:flutter_terminal_sdk/models/purchase_void_callbacks.dart';
 import 'package:flutter_terminal_sdk/models/authorized_callbacks.dart';
+import 'package:flutter_terminal_sdk/models/purchase_with_qr_callbacks.dart';
 import 'package:flutter_terminal_sdk/models/refund_callbacks.dart';
 import 'package:flutter_terminal_sdk/models/refund_void_callbacks.dart';
 import '../errors/errors.dart';
 import '../helper/helper.dart';
+import 'capture_authorization_with_tap_callbacks.dart';
 import 'card_reader_callbacks.dart';
 import 'data/authorize_response.dart';
 import 'data/capture_response.dart';
 import 'data/dto/payment_text.dart';
+import 'data/generated_qr_code.dart';
 import 'data/intent_response_turkey.dart';
 import 'data/purchase_response.dart';
+import 'data/qr_status_response.dart';
 import 'data/reconcile_response.dart';
 import 'data/reconciliation_receipts_response.dart';
 import 'data/increment_response.dart';
 import 'data/refund_response.dart';
 import 'data/reverse_response.dart';
+import 'data/terminal_config.dart';
 import 'data/void_authorization_response.dart';
 import 'intents_list_response.dart';
+import 'open_refund_callbacks.dart';
 import 'purchase_callbacks.dart';
 import 'data/payment_scheme.dart';
 
 class TerminalModel {
   final String? name;
   final PaymentText? paymentText;
-  final String terminalUUID;
-  final String tid;
+  final String? terminalUUID;
+  final String? tid;
+  final String? client;
 
   final MethodChannel _channel = const MethodChannel('nearpay_plugin');
   final Map<String, AuthorizedCallbacks> _activeAuthorizeCallbacks = {};
+  final Map<String, PurchaseWithQrCallbacks> _activePurchaseWithQRCallbacks =
+      {};
   final Map<String, PurchaseCallbacks> _activePurchaseCallbacks = {};
+  final Map<String, PurchaseCallbacks> _activePurchaseWithTipCallbacks = {};
+  final Map<String, PurchaseCallbacks> _activeInstallmentsCallbacks = {};
   final Map<String, PurchaseVoidCallbacks> _activePurchaseVoidCallbacks = {};
   final Map<String, RefundCallbacks> _activeRefundCallbacks = {};
+  final Map<String, OpenRefundCallbacks> _activeOpenRefundCallbacks = {};
   final Map<String, RefundVoidCallbacks> _activeRefundVoidCallbacks = {};
+  final Map<String, CaptureAuthorizationWithTapCallbacks>
+      _activeCaptureAuthorizationWithTapCallbacks = {};
 
   TerminalModel({
     this.name,
     this.paymentText,
     required this.terminalUUID,
     required this.tid,
+    this.client,
   }) {
     _channel.setMethodCallHandler(_handleMethodCall);
   }
 
   factory TerminalModel.fromJson(Map<String, dynamic> json) {
     return TerminalModel(
-      tid: json['tid'] as String,
-      terminalUUID: json['terminalUUID'] as String,
-      name: json['name'] as String? ?? '',
+      tid: json['tid'] as String?,
+      terminalUUID: json['terminalUUID'] as String?,
+      name: json['name'] as String?,
+      client: json['client'] as String?,
       paymentText: json['paymentText'] != null
           ? PaymentText.fromJson(json['paymentText'])
           : null,
@@ -59,7 +76,7 @@ class TerminalModel {
 
   @override
   String toString() {
-    return 'TerminalModel(name: $name, paymentText: $paymentText, terminalUUID: $terminalUUID, tid: $tid)';
+    return 'TerminalModel(name: $name, paymentText: $paymentText, terminalUUID: $terminalUUID, tid: $tid , client: $client)';
   }
 
   // isTerminalReady
@@ -80,20 +97,44 @@ class TerminalModel {
     }
   }
 
+  // dismissReaderUi
+  Future<bool> dismissReaderUi() async {
+    final response = await callAndReturnMapResponse(
+      'dismissReaderUi',
+      {'terminalUUID': terminalUUID},
+      _channel,
+    );
+
+    final status = response['status'];
+    if (status == 'success') {
+      return response['data'] as bool;
+    } else {
+      final message =
+          response['message'] ?? 'Failed to check terminal readiness';
+      throw NearpayException(message);
+    }
+  }
+
   Future<void> _handleMethodCall(MethodCall call) async {
     if (call.method == 'purchaseEvent' ||
         call.method == 'refundEvent' ||
         call.method == 'purchaseVoidEvent' ||
         call.method == 'refundVoidEvent' ||
-        call.method == "authorizeEvent"
-    ) {
+        call.method == 'openRefundEvent' ||
+        call.method == 'authorizeEvent' ||
+        call.method == 'captureAuthorizationWithTapEvent' ||
+        call.method == 'purchaseWithTipEvent' ||
+        call.method == 'installmentsEvent' ||
+        call.method == 'purchaseWithQREvent') {
       final args = Map<String, dynamic>.from(call.arguments);
-      final intentUUID = args['intentUUID'] as String;
+      final intentUUID = args['intentUUID'] as String?;
       final eventType = args['type'] as String;
       final message = args['message'] as String?;
       // print message
-      print(
-          "Received $eventType for intentUUID $intentUUID: message => $message");
+      if (kDebugMode) {
+        print(
+            "Received $eventType for intentUUID $intentUUID: message => $message");
+      }
 
       final rawData = args['data'];
       Map<String, dynamic>? data;
@@ -113,11 +154,70 @@ class TerminalModel {
       switch (call.method) {
         case 'purchaseEvent':
           final PurchaseCallbacks? callbacks =
-          _activePurchaseCallbacks[intentUUID];
+              _activePurchaseCallbacks[intentUUID];
 
           if (callbacks == null) {
-            print(
-                "No active purchase callbacks for intentUUID: $intentUUID");
+            if (kDebugMode) {
+              print("No active purchase callbacks for intentUUID: $intentUUID");
+            }
+            return;
+          }
+
+          _handleEvent(
+              eventType,
+              message,
+              data,
+              callbacks.cardReaderCallbacks,
+              callbacks.onTransactionPurchaseCompleted,
+              callbacks.onSendTransactionFailure);
+          break;
+        case 'purchaseWithQREvent':
+          final PurchaseWithQrCallbacks? callbacks =
+              _activePurchaseWithQRCallbacks[intentUUID];
+
+          if (callbacks == null) {
+            if (kDebugMode) {
+              print("No active purchase with qr callbacks for id: $intentUUID");
+            }
+            return;
+          }
+
+          _handelQrEvent(
+            eventType,
+            message,
+            data,
+            callbacks,
+          );
+
+          break;
+
+        case 'installmentsEvent':
+          final PurchaseCallbacks? callbacks =
+              _activeInstallmentsCallbacks[intentUUID];
+
+          if (callbacks == null) {
+            if (kDebugMode) {
+              print("No active purchase callbacks for intentUUID: $intentUUID");
+            }
+            return;
+          }
+
+          _handleEvent(
+              eventType,
+              message,
+              data,
+              callbacks.cardReaderCallbacks,
+              callbacks.onTransactionPurchaseCompleted,
+              callbacks.onSendTransactionFailure);
+          break;
+        case 'purchaseWithTipEvent':
+          final PurchaseCallbacks? callbacks =
+              _activePurchaseWithTipCallbacks[intentUUID];
+
+          if (callbacks == null) {
+            if (kDebugMode) {
+              print("No active purchase callbacks for intentUUID: $intentUUID");
+            }
             return;
           }
 
@@ -131,11 +231,13 @@ class TerminalModel {
           break;
         case 'authorizeEvent':
           final AuthorizedCallbacks? callbacks =
-          _activeAuthorizeCallbacks[intentUUID];
+              _activeAuthorizeCallbacks[intentUUID];
 
           if (callbacks == null) {
-            print(
-                "No active authorized callbacks for intentUUID: $intentUUID");
+            if (kDebugMode) {
+              print(
+                  "No active authorized callbacks for intentUUID: $intentUUID");
+            }
             return;
           }
 
@@ -148,12 +250,12 @@ class TerminalModel {
               callbacks.onSendTransactionFailure);
           break;
         case 'refundEvent':
-          final RefundCallbacks? callbacks =
-          _activeRefundCallbacks[intentUUID];
+          final RefundCallbacks? callbacks = _activeRefundCallbacks[intentUUID];
 
           if (callbacks == null) {
-            print(
-                "No active refund callbacks for intentUUID: $intentUUID");
+            if (kDebugMode) {
+              print("No active refund callbacks for intentUUID: $intentUUID");
+            }
             return;
           }
 
@@ -165,13 +267,35 @@ class TerminalModel {
               callbacks.onTransactionRefundCompleted,
               callbacks.onSendTransactionFailure);
           break;
-        case 'purchaseVoidEvent':
-          final PurchaseVoidCallbacks? callbacks =
-          _activePurchaseVoidCallbacks[intentUUID];
+        case 'openRefundEvent':
+          final OpenRefundCallbacks? callbacks =
+              _activeOpenRefundCallbacks[intentUUID];
 
           if (callbacks == null) {
-            print(
-                "No active purchase void callbacks for intentUUID: $intentUUID");
+            if (kDebugMode) {
+              print(
+                  "No active open refund callbacks for intentUUID: $intentUUID");
+            }
+            return;
+          }
+
+          _handleEvent(
+              eventType,
+              message,
+              data,
+              callbacks.cardReaderCallbacks,
+              callbacks.onTransactionOpenRefundCompleted,
+              callbacks.onSendTransactionFailure);
+          break;
+        case 'purchaseVoidEvent':
+          final PurchaseVoidCallbacks? callbacks =
+              _activePurchaseVoidCallbacks[intentUUID];
+
+          if (callbacks == null) {
+            if (kDebugMode) {
+              print(
+                  "No active purchase void callbacks for intentUUID: $intentUUID");
+            }
             return;
           }
 
@@ -183,13 +307,37 @@ class TerminalModel {
               callbacks.onSendPurchaseVoidCompleted,
               callbacks.onSendPurchaseVoidFailure);
           break;
-        case 'refundVoidEvent':
-          final RefundVoidCallbacks? callbacks =
-          _activeRefundVoidCallbacks[intentUUID];
+        case 'captureAuthorizationWithTapEvent':
+          final uuid = args['uuid'] as String;
+
+          final CaptureAuthorizationWithTapCallbacks? callbacks =
+              _activeCaptureAuthorizationWithTapCallbacks[uuid];
 
           if (callbacks == null) {
-            print(
-                "No active refund void callbacks for intentUUID: $intentUUID");
+            if (kDebugMode) {
+              print(
+                  "No active capture authorization with tap callbacks for intentUUID: $uuid");
+            }
+            return;
+          }
+
+          _handleEvent(
+              eventType,
+              message,
+              data,
+              callbacks.cardReaderCallbacks,
+              callbacks.onAuthorizedResponseWithTapCompleted,
+              callbacks.onSendTransactionFailure);
+          break;
+        case 'refundVoidEvent':
+          final RefundVoidCallbacks? callbacks =
+              _activeRefundVoidCallbacks[intentUUID];
+
+          if (callbacks == null) {
+            if (kDebugMode) {
+              print(
+                  "No active refund void callbacks for intentUUID: $intentUUID");
+            }
             return;
           }
 
@@ -200,15 +348,20 @@ class TerminalModel {
     }
   }
 
-  void _handleEvent(String eventType,
-      String? message,
-      Map<String, dynamic>? data,
-      CardReaderCallbacks? cardReaderCallbacks,
-      Function? onSuccess,
-      Function(String)? onFailure,) {
+  void _handleEvent(
+    String eventType,
+    String? message,
+    Map<String, dynamic>? data,
+    CardReaderCallbacks? cardReaderCallbacks,
+    Function? onSuccess,
+    Function(String)? onFailure,
+  ) {
     switch (eventType) {
       case 'readerDisplayed':
         cardReaderCallbacks?.onReaderDisplayed?.call();
+        break;
+      case 'readerDismissed':
+        cardReaderCallbacks?.onReaderDismissed?.call();
         break;
       case 'readerClosed':
         cardReaderCallbacks?.onReaderClosed?.call();
@@ -264,7 +417,37 @@ class TerminalModel {
           }
         }
         break;
+      case 'sendPurchaseWithTipTransactionCompleted':
+        if (data != null) {
+          try {
+            final purchaseResponse = PurchaseResponse.fromJson(data);
+            onSuccess?.call(purchaseResponse);
+          } catch (e) {
+            onFailure?.call("Error parsing PurchaseResponse: $e");
+          }
+        }
+        break;
+      case 'sendInstallmentsTransactionCompleted':
+        if (data != null) {
+          try {
+            final purchaseResponse = PurchaseResponse.fromJson(data);
+            onSuccess?.call(purchaseResponse);
+          } catch (e) {
+            onFailure?.call("Error parsing PurchaseResponse: $e");
+          }
+        }
+        break;
       case 'sendRefundTransactionCompleted':
+        if (data != null) {
+          try {
+            final refundResponse = RefundResponse.fromJson(data);
+            onSuccess?.call(refundResponse);
+          } catch (e) {
+            onFailure?.call("Error parsing RefundResponse: $e");
+          }
+        }
+        break;
+      case 'sendOpenRefundTransactionCompleted':
         if (data != null) {
           try {
             final refundResponse = RefundResponse.fromJson(data);
@@ -279,6 +462,16 @@ class TerminalModel {
           try {
             final authorizeResponse = AuthorizeResponse.fromJson(data);
             onSuccess?.call(authorizeResponse);
+          } catch (e) {
+            onFailure?.call("Error parsing AuthorizeResponse: $e");
+          }
+        }
+        break;
+      case 'captureWithTapCompleted':
+        if (data != null) {
+          try {
+            final captureResponse = CaptureResponse.fromJson(data);
+            onSuccess?.call(captureResponse);
           } catch (e) {
             onFailure?.call("Error parsing AuthorizeResponse: $e");
           }
@@ -301,23 +494,26 @@ class TerminalModel {
   }
 
   void dispose() {
+    _activePurchaseWithQRCallbacks.clear();
     _activePurchaseCallbacks.clear();
     _activeRefundCallbacks.clear();
+    _activeOpenRefundCallbacks.clear();
     _activePurchaseVoidCallbacks.clear();
     _activeRefundVoidCallbacks.clear();
     _activeAuthorizeCallbacks.clear();
+    _activeCaptureAuthorizationWithTapCallbacks.clear();
+    _activePurchaseWithTipCallbacks.clear();
+    _activeInstallmentsCallbacks.clear();
   }
 
   /// reverseTerminal
   Future<ReverseResponse> reverseTransaction({
     required String intentId,
-    required String transactionID,
   }) async {
     final response = await callAndReturnMapResponse(
       'reverseTransaction',
       {
         'terminalUUID': terminalUUID,
-        'transactionID': transactionID,
         'intentId': intentId,
       },
       _channel,
@@ -348,7 +544,7 @@ class TerminalModel {
         {
           "uuid": terminalUUID,
           "amount": amount,
-          "scheme": scheme != null ? scheme?.name : null,
+          "scheme": scheme?.name,
           "intentUUID": intentUUID,
           "customerReferenceNumber": customerReferenceNumber,
         },
@@ -363,6 +559,113 @@ class TerminalModel {
       }
     } catch (e) {
       _activePurchaseCallbacks.remove(intentUUID);
+      rethrow;
+    }
+  }
+
+  Future<String> generateQrCodeWithUi({
+    required String id,
+    required String amount,
+    required bool enableUiDismiss,
+    String? customerReferenceNumber,
+    required PurchaseWithQrCallbacks callbacks,
+  }) async {
+    _activePurchaseWithQRCallbacks[id] = callbacks;
+
+    try {
+      final response = await callAndReturnMapResponse(
+        'purchaseWithQR',
+        {
+          "uuid": terminalUUID,
+          "amount": amount,
+          "id": id,
+          "enableUiDismiss": enableUiDismiss,
+          "customerReferenceNumber": customerReferenceNumber,
+        },
+        _channel,
+      );
+
+      if (response["status"] == "success") {
+        return id;
+      } else {
+        _activePurchaseWithQRCallbacks.remove(id);
+        throw NearpayException(
+            response["message"] ?? "Purchase with QR cdoe failed");
+      }
+    } catch (e) {
+      _activePurchaseWithQRCallbacks.remove(id);
+      rethrow;
+    }
+  }
+
+  Future<String> purchaseWithTip({
+    required String intentUUID,
+    required int amount,
+    required int amountOther,
+    PaymentScheme? scheme,
+    String? customerReferenceNumber,
+    required PurchaseCallbacks callbacks,
+  }) async {
+    _activePurchaseWithTipCallbacks[intentUUID] = callbacks;
+
+    try {
+      final response = await callAndReturnMapResponse(
+        'purchaseWithTip',
+        {
+          "uuid": terminalUUID,
+          "amount": amount,
+          "amountOther": amountOther,
+          "scheme": scheme?.name,
+          "intentUUID": intentUUID,
+          "customerReferenceNumber": customerReferenceNumber,
+        },
+        _channel,
+      );
+
+      if (response["status"] == "success") {
+        return intentUUID;
+      } else {
+        _activePurchaseWithTipCallbacks.remove(intentUUID);
+        throw NearpayException(response["message"] ?? "Purchase failed");
+      }
+    } catch (e) {
+      _activePurchaseWithTipCallbacks.remove(intentUUID);
+      rethrow;
+    }
+  }
+
+  Future<String> installments({
+    required String intentUUID,
+    required int amount,
+    required int numberOfInstallments,
+    PaymentScheme? scheme,
+    String? customerReferenceNumber,
+    required PurchaseCallbacks callbacks,
+  }) async {
+    _activeInstallmentsCallbacks[intentUUID] = callbacks;
+
+    try {
+      final response = await callAndReturnMapResponse(
+        'installments',
+        {
+          "uuid": terminalUUID,
+          "amount": amount,
+          "numberOfInstallments": numberOfInstallments,
+          "scheme": scheme?.name,
+          "intentUUID": intentUUID,
+          "customerReferenceNumber": customerReferenceNumber,
+        },
+        _channel,
+      );
+
+      if (response["status"] == "success") {
+        return intentUUID;
+      } else {
+        _activeInstallmentsCallbacks.remove(intentUUID);
+        throw NearpayException(response["message"] ?? "Purchase failed");
+      }
+    } catch (e) {
+      _activeInstallmentsCallbacks.remove(intentUUID);
       rethrow;
     }
   }
@@ -382,7 +685,7 @@ class TerminalModel {
         {
           "uuid": terminalUUID,
           "amount": amount,
-          "scheme": scheme != null ? scheme?.name : null,
+          "scheme": scheme?.name,
           "intentUUID": intentUUID,
           "customerReferenceNumber": customerReferenceNumber,
         },
@@ -420,7 +723,7 @@ class TerminalModel {
           "refundUuid": refundUuid,
           "amount": amount,
           "customerReferenceNumber": customerReferenceNumber,
-          "scheme": scheme != null ? scheme?.name : null,
+          "scheme": scheme?.name,
         },
         _channel,
       );
@@ -437,36 +740,70 @@ class TerminalModel {
     }
   }
 
+  Future<String> openRefund({
+    required String intentUUID,
+    required int amount,
+    PaymentScheme? scheme,
+    String? customerReferenceNumber,
+    required OpenRefundCallbacks callbacks,
+  }) async {
+    _activeOpenRefundCallbacks[intentUUID] = callbacks;
+
+    try {
+      final response = await callAndReturnMapResponse(
+        'openRefund',
+        {
+          "terminalUUID": terminalUUID,
+          "intentUUID": intentUUID,
+          "amount": amount,
+          "customerReferenceNumber": customerReferenceNumber,
+          "scheme": scheme?.name,
+        },
+        _channel,
+      );
+
+      if (response["status"] == "success") {
+        return intentUUID;
+      } else {
+        _activeOpenRefundCallbacks.remove(intentUUID);
+        throw NearpayException(response["message"] ?? "Refund failed");
+      }
+    } catch (e) {
+      _activeOpenRefundCallbacks.remove(intentUUID);
+      rethrow;
+    }
+  }
+
   Future<String> refundVoid({
-    required String refundUuid,
+    required String intentUUID,
     required int amount,
     PaymentScheme? scheme,
     String? customerReferenceNumber,
     required RefundVoidCallbacks callbacks,
   }) async {
-    _activeRefundVoidCallbacks[refundUuid] = callbacks;
+    _activeRefundVoidCallbacks[intentUUID] = callbacks;
 
     try {
       final response = await callAndReturnMapResponse(
         'refundVoid',
         {
           "terminalUUID": terminalUUID,
-          "refundUuid": refundUuid,
+          "intentUUID": intentUUID,
           "amount": amount,
           "customerReferenceNumber": customerReferenceNumber,
-          "scheme": scheme != null ? scheme?.name : null,
+          "scheme": scheme?.name,
         },
         _channel,
       );
 
       if (response["status"] == "success") {
-        return refundUuid;
+        return intentUUID;
       } else {
-        _activeRefundVoidCallbacks.remove(refundUuid);
+        _activeRefundVoidCallbacks.remove(intentUUID);
         throw NearpayException(response["message"] ?? "Refund failed");
       }
     } catch (e) {
-      _activeRefundVoidCallbacks.remove(refundUuid);
+      _activeRefundVoidCallbacks.remove(intentUUID);
       rethrow;
     }
   }
@@ -499,9 +836,8 @@ class TerminalModel {
     int? page,
     int? pageSize,
     bool? isReconciled,
-    num? date,
-    num? startDate,
-    num? endDate,
+    String? startDate,
+    String? endDate,
     String? customerReferenceNumber,
   }) async {
     final result = await callAndReturnMapResponse(
@@ -511,7 +847,6 @@ class TerminalModel {
         "page": page,
         "pageSize": pageSize,
         "isReconciled": isReconciled,
-        "date": date,
         "startDate": startDate,
         "endDate": endDate,
         "customerReferenceNumber": customerReferenceNumber,
@@ -618,7 +953,7 @@ class TerminalModel {
         {
           "terminalUUID": terminalUUID,
           "amount": amount,
-          "scheme": scheme != null ? scheme?.name : null,
+          "scheme": scheme?.name,
           "uuid": uuid,
           "customerReferenceNumber": customerReferenceNumber,
         },
@@ -664,7 +999,7 @@ class TerminalModel {
   Future<IncrementResponse> incrementAuthorization({
     required String uuid,
     required String authorizationUuid,
-    required double amount,
+    required int amount,
   }) async {
     final response = await callAndReturnMapResponse(
       'incrementAuthorization',
@@ -709,7 +1044,7 @@ class TerminalModel {
   }
 
   // getTerminalConfig
-  Future<String?> getTerminalConfig() async {
+  Future<TerminalConfig> getTerminalConfig() async {
     final response = await callAndReturnMapResponse(
       'getTerminalConfig',
       {
@@ -720,7 +1055,11 @@ class TerminalModel {
 
     final status = response['status'];
     if (status == 'success') {
-      return response['data'];
+      final raw = response['data'];
+      if (raw is! Map) {
+        throw NearpayException('Invalid terminal config payload');
+      }
+      return TerminalConfig.fromJson(Map<String, dynamic>.from(raw as Map));
     } else {
       final message = response['message'] ?? 'Failed to get terminal config';
       throw NearpayException(message);
@@ -731,7 +1070,7 @@ class TerminalModel {
   Future<CaptureResponse> captureAuthorization({
     required String uuid,
     required String authorizationUuid,
-    required double amount,
+    required int amount,
   }) async {
     final response = await callAndReturnMapResponse(
       'captureAuthorization',
@@ -754,7 +1093,41 @@ class TerminalModel {
     }
   }
 
-  // tipTransaction
+  // captureAuthorization
+  Future<String> captureAuthorizationWithTap({
+    required String uuid,
+    required String authorizationUuid,
+    required int amount,
+    required CaptureAuthorizationWithTapCallbacks callbacks,
+  }) async {
+    _activeCaptureAuthorizationWithTapCallbacks[uuid] = callbacks;
+    try {
+      final response = await callAndReturnMapResponse(
+        'captureAuthorizationWithTap',
+        {
+          'terminalUUID': terminalUUID,
+          'authorizationUuid': authorizationUuid,
+          'uuid': uuid,
+          'amount': amount,
+        },
+        _channel,
+      );
+
+      if (response['status'] == 'success') {
+        return uuid;
+      } else {
+        _activeCaptureAuthorizationWithTapCallbacks.remove(uuid);
+        final message =
+            response['message'] ?? 'Failed to capture authorization';
+        throw NearpayException(message);
+      }
+    } catch (e) {
+      _activeCaptureAuthorizationWithTapCallbacks.remove(uuid);
+      rethrow;
+    }
+  }
+
+// tipTransaction
   Future<PurchaseResponse> tipTransaction({
     required String id,
     required int amount,
@@ -778,5 +1151,93 @@ class TerminalModel {
     } catch (e) {
       rethrow;
     }
+  }
+}
+
+void _handelQrEvent(
+  String eventType,
+  String? message,
+  data,
+  PurchaseWithQrCallbacks callbacks,
+) {
+  switch (eventType) {
+    case 'qrUiPresented':
+      if (data != null) {
+        try {
+          final generatedQRCode = GeneratedQRCode.fromJson(data);
+          callbacks.onQrUiPresented?.call(generatedQRCode);
+        } catch (e) {
+          callbacks.onParsingFailed?.call("Error parsing GeneratedQRCode: $e");
+        }
+      }
+      break;
+    case 'qrPaymentStatusUpdated':
+      if (data != null) {
+        try {
+          final qrStatusResponse = QrStatusResponse.fromJson(data);
+          callbacks.onQrPaymentStatusUpdated?.call(qrStatusResponse);
+        } catch (e) {
+          callbacks.onParsingFailed?.call("Error parsing QrStatusResponse: $e");
+        }
+      }
+      break;
+    case 'qrPaymentStatusExpired':
+      if (data != null) {
+        try {
+          final qrStatusResponse = QrStatusResponse.fromJson(data);
+          callbacks.onQrPaymentStatusExpired?.call(qrStatusResponse);
+        } catch (e) {
+          callbacks.onParsingFailed?.call("Error parsing QrStatusResponse: $e");
+        }
+      }
+      break;
+    case 'qrPaymentStatusCompleted':
+      if (data != null) {
+        try {
+          final qrStatusResponse = QrStatusResponse.fromJson(data);
+          callbacks.onQrPaymentStatusCompleted?.call(qrStatusResponse);
+        } catch (e) {
+          callbacks.onParsingFailed?.call("Error parsing QrStatusResponse: $e");
+        }
+      }
+      break;
+    case 'qrPaymentApproved':
+      if (data != null) {
+        try {
+          final intentDetails = IntentDetails.fromJson(data);
+          callbacks.onQrPaymentApproved?.call(intentDetails);
+        } catch (e) {
+          callbacks.onParsingFailed?.call("Error parsing IntentDetails: $e");
+        }
+      }
+      break;
+    case 'qrPaymentDeclined':
+      if (data != null) {
+        try {
+          final intentDetails = IntentDetails.fromJson(data);
+          callbacks.onQrPaymentDeclined?.call(intentDetails);
+        } catch (e) {
+          callbacks.onParsingFailed?.call("Error parsing IntentDetails: $e");
+        }
+      }
+      break;
+    case 'qrPaymentFailure':
+      if (message != null) {
+        callbacks.onQrPaymentFailure?.call(message);
+      }
+      break;
+    case 'qrPaymentStatusFailed':
+      if (data != null) {
+        try {
+          final qrStatusResponse = QrStatusResponse.fromJson(data);
+          callbacks.onQrPaymentStatusFailed?.call(qrStatusResponse);
+        } catch (e) {
+          callbacks.onParsingFailed?.call("Error parsing QrStatusResponse: $e");
+        }
+      }
+      break;
+    case "uiClosed":
+      callbacks.onQrUiClosed?.call();
+      break;
   }
 }

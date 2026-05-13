@@ -1,5 +1,6 @@
+import 'package:flutter_terminal_sdk/models/data/transaction_response.dart';
+
 import 'Intent_details.dart';
-import 'transaction_response.dart';
 
 class PurchaseResponse {
   final IntentDetails? details;
@@ -26,6 +27,13 @@ class PurchaseResponse {
     return details?.transactions.last.events?[0].receipt;
   }
 
+  // add to json
+  Map<String, dynamic> toJson() {
+    return {
+      'details': details?.toJson(),
+      'status': status,
+    };
+  }
 
   @override
   String toString() => 'PurchaseResponse(details: $details, status: $status)';

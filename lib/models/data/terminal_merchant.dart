@@ -34,6 +34,15 @@ class TerminalMerchant {
     );
   }
 
+  /// to JSON serialization
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name.toJson(),
+      'createdAt': createdAt,
+    };
+  }
+
   @override
   String toString() =>
       'TerminalMerchant(id: $id, name: $name, createdAt: $createdAt)';

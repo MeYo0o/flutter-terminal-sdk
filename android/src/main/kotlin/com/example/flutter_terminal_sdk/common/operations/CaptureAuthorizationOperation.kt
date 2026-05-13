@@ -16,7 +16,7 @@ class CaptureAuthorizationOperation(provider: NearpayProvider) : BaseOperation(p
         val terminalUUID = filter.getString("terminalUUID")
             ?: return response(ResponseHandler.error("MISSING_UUID", "Terminal uuid is required"))
 
-        val amount = filter.getDouble("amount")
+        val amount = filter.getLong("amount")
             ?: return response(ResponseHandler.error("MISSING_AMOUNT", "Amount is required"))
 
 
@@ -51,7 +51,8 @@ class CaptureAuthorizationOperation(provider: NearpayProvider) : BaseOperation(p
                             "Capture authorization completed successfully",
                             map
                         )
-                    )                }
+                    )
+                }
 
                 override fun onCaptureAuthorizationFailure(captureAuthorizationFailure: CaptureAuthorizationFailure) {
 

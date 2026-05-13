@@ -4,6 +4,7 @@ import com.example.flutter_terminal_sdk.common.NearpayProvider
 import com.example.flutter_terminal_sdk.common.filter.ArgsFilter
 import com.example.flutter_terminal_sdk.common.status.ResponseHandler
 import io.nearpay.terminalsdk.TerminalConnection
+import io.nearpay.terminalsdk.data.dto.Pagination
 import io.nearpay.terminalsdk.listeners.GetTerminalsListener
 import io.nearpay.terminalsdk.listeners.failures.GetTerminalsFailure
 import timber.log.Timber
@@ -37,7 +38,10 @@ class GetTerminalListOperation(provider: NearpayProvider) : BaseOperation(provid
             pageSize = pageSize,
             filter = null,
             listener = object : GetTerminalsListener {
-                override fun onGetTerminalsSuccess(terminalsConnection: List<TerminalConnection>) {
+                override fun onGetTerminalsSuccess(
+                    terminalsConnection: List<TerminalConnection>,
+                    pagination: Pagination
+                ) {
                     if (isResponseSent) return
                     Timber.d("Terminals fetched: ${terminalsConnection.size} terminals found")
                     isResponseSent = true
@@ -59,6 +63,7 @@ class GetTerminalListOperation(provider: NearpayProvider) : BaseOperation(provid
                                 "isLocked" to t.terminalConnectionData.isLocked,
                                 "hasProfile" to t.terminalConnectionData.hasProfile,
                                 "userUUID" to t.terminalConnectionData.userUUID,
+                                "client" to t.terminalConnectionData.client,
                                 "merchant" to t.terminalConnectionData.merchant?.let { m ->
 
                                     mapOf(
@@ -77,7 +82,14 @@ class GetTerminalListOperation(provider: NearpayProvider) : BaseOperation(provid
                         response(
                             ResponseHandler.success(
                                 "Terminals fetched",
-                                mapOf("terminals" to mappedTerminals)
+                                mapOf(
+                                    "terminals" to mappedTerminals,
+                                    "pagination" to mapOf(
+                                        "total_pages" to pagination?.total_pages,
+                                        "total_data" to pagination?.total_data,
+                                        "current_page" to pagination?.current_page
+                                    )
+                                )
                             )
                         )
                     }
@@ -94,6 +106,7 @@ class GetTerminalListOperation(provider: NearpayProvider) : BaseOperation(provid
                         )
                     )
                 }
+
             }
         )
     }

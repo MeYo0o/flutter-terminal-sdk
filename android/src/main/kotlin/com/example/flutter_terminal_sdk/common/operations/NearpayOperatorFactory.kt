@@ -2,10 +2,13 @@ import com.example.flutter_terminal_sdk.common.NearpayProvider
 import com.example.flutter_terminal_sdk.common.operations.AuthorizeOperation
 import com.example.flutter_terminal_sdk.common.operations.BaseOperation
 import com.example.flutter_terminal_sdk.common.operations.CaptureAuthorizationOperation
+import com.example.flutter_terminal_sdk.common.operations.CaptureAuthorizationWithTapOperation
 import com.example.flutter_terminal_sdk.common.operations.CheckRequiredPermissionsOperation
 import com.example.flutter_terminal_sdk.common.operations.ConnectTerminalOperation
+import com.example.flutter_terminal_sdk.common.operations.DismissReaderUiOperation
 import com.example.flutter_terminal_sdk.common.operations.GetPendingTotalOperation
 import com.example.flutter_terminal_sdk.common.operations.GetReconciliationListOperation
+import com.example.flutter_terminal_sdk.common.operations.ToImageOperation
 import com.example.flutter_terminal_sdk.common.operations.GetReconciliationOperation
 import com.example.flutter_terminal_sdk.common.operations.GetTerminalConfigOperation
 import com.example.flutter_terminal_sdk.common.operations.GetTerminalListOperation
@@ -16,12 +19,16 @@ import com.example.flutter_terminal_sdk.common.operations.GetUserOperation
 import com.example.flutter_terminal_sdk.common.operations.GetUsersOperation
 import com.example.flutter_terminal_sdk.common.operations.IncrementAuthorizationOperation
 import com.example.flutter_terminal_sdk.common.operations.InitializeOperation
+import com.example.flutter_terminal_sdk.common.operations.InstallmentsOperation
 import com.example.flutter_terminal_sdk.common.operations.IsNfcEnableOperation
 import com.example.flutter_terminal_sdk.common.operations.IsTerminalReadyOperation
 import com.example.flutter_terminal_sdk.common.operations.IsWifiEnableOperation
 import com.example.flutter_terminal_sdk.common.operations.LogoutOperation
+import com.example.flutter_terminal_sdk.common.operations.OpenRefundOperation
 import com.example.flutter_terminal_sdk.common.operations.PurchaseOperation
 import com.example.flutter_terminal_sdk.common.operations.PurchaseVoidOperation
+import com.example.flutter_terminal_sdk.common.operations.PurchaseWithQROperation
+import com.example.flutter_terminal_sdk.common.operations.PurchaseWithTipOperation
 import com.example.flutter_terminal_sdk.common.operations.ReconcileOperation
 import com.example.flutter_terminal_sdk.common.operations.RefundOperation
 import com.example.flutter_terminal_sdk.common.operations.RefundVoidOperation
@@ -68,7 +75,14 @@ class NearpayOperatorFactory(private val provider: NearpayProvider) {
         "isTerminalReady" to IsTerminalReadyOperation(provider),// Assuming incrementalAuthorize is similar to authorize,
         "getPendingTotal" to GetPendingTotalOperation(provider),
         "getTerminalConfig" to GetTerminalConfigOperation(provider),
-        "tipTransaction" to TipTransactionOperation(provider)
+        "tipTransaction" to TipTransactionOperation(provider),
+        "dismissReaderUi" to DismissReaderUiOperation(provider),
+        "toImage" to ToImageOperation(provider),
+        "openRefund" to OpenRefundOperation(provider),
+        "captureAuthorizationWithTap" to CaptureAuthorizationWithTapOperation(provider),
+        "purchaseWithTip" to PurchaseWithTipOperation(provider), // Reusing PurchaseOperation for purchaseWithTip
+        "installments" to InstallmentsOperation(provider), // Reusing PurchaseOperation for purchaseWithTip
+        "purchaseWithQR" to PurchaseWithQROperation(provider), // Reusing PurchaseOperation for purchaseWithTip
 
     )
 

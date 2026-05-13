@@ -39,6 +39,7 @@ class PurchaseOperation(provider: NearpayProvider) : BaseOperation(provider) {
         val schemeString = filter.getString("scheme")
         val scheme = schemeString?.uppercase()?.let { PaymentScheme.valueOf(it) }
 
+
         // Retrieve the TerminalSDK instance
         val terminal: Terminal = provider.terminalSdk?.getTerminal(provider.activity!!, uuid)
             ?: return response(
@@ -60,6 +61,11 @@ class PurchaseOperation(provider: NearpayProvider) : BaseOperation(provider) {
                     override fun onReaderClosed() {
                         Timber.tag("PurchaseOperation").d("onReaderClosed")
                         sendPurchaseEvent(intentUUID, "readerClosed", null, null)
+                    }
+
+                    override fun onReaderDismissed() {
+                        Timber.tag("PurchaseOperation").d("onReaderDismissed")
+                        sendPurchaseEvent(intentUUID, "readerDismissed", null, null)
                     }
 
                     override fun onReaderDisplayed() {

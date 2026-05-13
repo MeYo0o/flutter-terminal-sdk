@@ -16,4 +16,11 @@ class CardScheme {
     );
   }
 
+  Map<String, dynamic> toJson() {
+    return {
+      'name': name.toJson(),
+      'id': id,
+    };
+  }
+
 }

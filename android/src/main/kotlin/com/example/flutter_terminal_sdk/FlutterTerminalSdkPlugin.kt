@@ -34,12 +34,12 @@ class FlutterTerminalSdkPlugin : FlutterPlugin, MethodChannel.MethodCallHandler,
         context = flutterPluginBinding.applicationContext
         channel = MethodChannel(flutterPluginBinding.binaryMessenger, "nearpay_plugin")
         channel.setMethodCallHandler(this)
-        provider = NearpayProvider(context!!, channel)
     }
 
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
         activity = binding.activity
-        provider.attachActivity(activity!!)
+        provider = NearpayProvider(binding.activity, channel)
+        provider.attachActivity(binding.activity)
         operatorFactory = NearpayOperatorFactory(provider)
     }
 
@@ -79,7 +79,7 @@ class FlutterTerminalSdkPlugin : FlutterPlugin, MethodChannel.MethodCallHandler,
                         withContext(Dispatchers.Main) {
                             result.success("Initialization successful")
                         }
-                    } catch (e: Exception) {
+                    } catch (e: Throwable) {
                         withContext(Dispatchers.Main) {
                             result.error(
                                 "INITIALIZATION_FAILED",

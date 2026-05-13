@@ -16,4 +16,12 @@ class ApprovalCode {
     );
   }
 
+
+  Map<String, dynamic> toJson() {
+    return {
+      'value': value,
+      'label': label.toJson(),
+    };
+  }
+
 }

@@ -1,9 +1,4 @@
-import 'package:flutter_terminal_sdk/models/data/scheme.dart';
 
-import 'details.dart';
-import 'label_value.dart';
-import 'dto/language_content.dart';
-import 'merchant.dart';
 
 class AuthorizeReceipt {
   final String id;

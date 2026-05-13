@@ -22,6 +22,8 @@ class Merchant {
     );
   }
 
+
+
   Merchant copyWith({
     String? id,
     LanguageContent? name,
@@ -34,6 +36,16 @@ class Merchant {
       address: address ?? this.address,
       categoryCode: categoryCode ?? this.categoryCode,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name?.toJson(),
+      'address': address?.toJson(),
+      'category_code': categoryCode ?? "",
+      'categoryCode': categoryCode ?? "",
+    };
   }
 
   @override

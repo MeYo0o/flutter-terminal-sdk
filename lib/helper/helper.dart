@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import '../errors/errors.dart';
 
 Future<Map<String, dynamic>> callAndReturnMapResponse(
   String methodName,

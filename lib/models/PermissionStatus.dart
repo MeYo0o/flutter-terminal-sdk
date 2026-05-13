@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 class PermissionStatus {
   final String? permission;
   final bool? isGranted;

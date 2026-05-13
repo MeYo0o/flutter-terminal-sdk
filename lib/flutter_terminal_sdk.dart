@@ -1,28 +1,63 @@
 // lib/flutter_terminal_sdk.dart
 
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'errors/errors.dart';
 import 'models/PermissionStatus.dart';
+import 'models/data/Pagination.dart';
+import 'models/data/TerminalList.dart';
+import 'models/data/ui_dock_position.dart';
 import 'models/nearpay_user_response.dart';
 import 'models/send_otp_response.dart';
 import 'models/terminal_connection_response.dart';
 import 'models/terminal_response.dart';
+import 'models/terminal_sdk_initialization_listener.dart';
+
+export 'models/data/terminal_config.dart';
 
 /// Enumerations for environment/country
 enum Environment { sandbox, production, internal }
 
-enum Country { sa, tr, usa }
+enum Country { sa, tr, usa, jo , uae }
+
+enum SupportSecondDisplay { enable, disable, initial }
+
+/// Cellular vs Wi‑Fi preference for the native Android SDK `NetworkConfiguration`.
+enum NetworkConfiguration {
+  /// Same as NearPay `NetworkConfiguration.DEFAULT`.
+  networkDefault,
+  simPreferred,
+  simOnly,
+}
 
 class FlutterTerminalSdk {
   static final FlutterTerminalSdk _instance = FlutterTerminalSdk._internal();
+  late TerminalSDKInitializationListener initializationListener;
 
   factory FlutterTerminalSdk() {
     return _instance;
   }
 
   FlutterTerminalSdk._internal()
-      : _channel = const MethodChannel('nearpay_plugin');
+      : _channel = const MethodChannel('nearpay_plugin') {
+    _channel.setMethodCallHandler(_handleMethodCall);
+  }
+
+  Future<void> _handleMethodCall(MethodCall call) async {
+    print("Flutter::: _handleMethodCall called with method: ${call.method}");
+    switch (call.method) {
+      case 'onSdkInitializationFailed':
+        final args = Map<String, dynamic>.from(call.arguments);
+        final error = args['error'] as String?;
+        initializationListener
+            .onInitializationFailure!(error ?? "Unknown error");
+        break;
+      case 'onSdkInitialized':
+        initializationListener.onInitializationSuccess!();
+        break;
+    }
+  }
 
   final MethodChannel _channel;
 
@@ -30,10 +65,8 @@ class FlutterTerminalSdk {
 
   bool get isInitialized => _initialized;
 
-  Future<Map<String, dynamic>> _callAndReturnMapResponse(
-    String methodName,
-    dynamic data,
-  ) async {
+  Future<Map<String, dynamic>> _callAndReturnMapResponse(String methodName,
+      dynamic data,) async {
     if (!_initialized) {
       throw NearpayException("Cannot call $methodName before initialization");
     }
@@ -44,27 +77,60 @@ class FlutterTerminalSdk {
   /// Initialize the SDK
   Future<void> initialize({
     required Environment environment,
-    required int googleCloudProjectNumber,
-    required String huaweiSafetyDetectApiKey,
     required Country country,
+    required int? googleCloudProjectNumber,
+    String? huaweiSafetyDetectApiKey,
+    UiDockPosition? uiDockPosition,
+    UiDockPosition? secondDisplayDockPosition,
+    UiDockPosition? pinPosition,
+    SupportSecondDisplay? supportSecondDisplay,
+    NetworkConfiguration? networkConfiguration,
+    /// When set, overrides [networkConfiguration] (NearPay `NetworkConfiguration.fromId`).
+    int? networkConfigurationId,
+    TerminalSDKInitializationListener? initializationListener,
   }) async {
+    if (initializationListener != null) {
+      setInitializationListener(initializationListener);
+    }
     final environmentString =
         environment.name; // "sandbox" or "production" or "internal"
     final countryString = country.name; // "sa", "tr", or "usa"
+    final uiDockPositionString = uiDockPosition?.name; // "sa", "tr", or "usa"
+    final secondDisplayDockPositionString =
+        secondDisplayDockPosition?.name;
+    final pinPositionString =
+        pinPosition?.name;
+    final supportSecondDisplayString =
+        supportSecondDisplay?.name; // "enabled", "disabled", "auto"
+    final networkConfigurationString = networkConfiguration?.name;
 
     try {
-      await _channel.invokeMethod('initialize', {
+      final response = await _channel.invokeMethod('initialize', {
         'environment': environmentString,
+        'country': countryString,
         'googleCloudProjectNumber': googleCloudProjectNumber,
         'huaweiSafetyDetectApiKey': huaweiSafetyDetectApiKey,
-        'country': countryString,
+        'uiDockPosition': uiDockPositionString,
+        'secondDisplayDockPosition': secondDisplayDockPositionString,
+        'supportSecondDisplay': supportSecondDisplayString,
+        'pinPosition': pinPositionString,
+        if (networkConfigurationString != null)
+          'networkConfiguration': networkConfigurationString,
+        if (networkConfigurationId != null)
+          'networkConfigurationId': networkConfigurationId,
       });
       _initialized = true;
     } catch (e) {
-      print("Flutter::: Error initializing Nearpay Terminal SDK: $e");
+      if (kDebugMode) {
+        print("Flutter::: Error initializing Nearpay Terminal SDK: $e");
+      }
       _initialized = false;
       throw NearpayException("Failed to initialize Nearpay Terminal SDK: $e");
     }
+  }
+
+  void setInitializationListener(TerminalSDKInitializationListener listener) {
+    initializationListener = listener;
   }
 
   //checkRequiredPermissions
@@ -73,7 +139,9 @@ class FlutterTerminalSdk {
       final response = await _channel.invokeMethod('checkRequiredPermissions');
       if (response["status"] == "success") {
         final data = response["data"];
-        print("data $data");
+        if (kDebugMode) {
+          print("data $data");
+        }
         return response["data"]
             .map<PermissionStatus>(
                 (permission) => PermissionStatus.fromJson(permission))
@@ -91,13 +159,7 @@ class FlutterTerminalSdk {
   Future<bool> isNfcEnabled() async {
     try {
       final response = await _channel.invokeMethod('isNfcEnabled');
-      if (response["status"] == "success") {
-        final data = response["data"];
-        return data;
-      } else {
-        final errorMsg = response["message"] ?? "Failed to get NFC status";
-        throw NearpayException(errorMsg);
-      }
+      return response["data"];
     } catch (e) {
       throw NearpayException("Failed to get NFC status: $e");
     }
@@ -107,13 +169,7 @@ class FlutterTerminalSdk {
   Future<bool> isWifiEnabled() async {
     try {
       final response = await _channel.invokeMethod('isWifiEnabled');
-      if (response["status"] == "success") {
-        final data = response["data"];
-        return data;
-      } else {
-        final errorMsg = response["message"] ?? "Failed to get Wifi status";
-        throw NearpayException(errorMsg);
-      }
+      return response["data"];
     } catch (e) {
       throw NearpayException("Failed to get Wifi status: $e");
     }
@@ -208,8 +264,8 @@ class FlutterTerminalSdk {
     );
 
     if (response["status"] == "success") {
-      final data = response['data'] as Map<String, dynamic>;
-      return TerminalModel.fromJson(data);
+      final data = response['data'];
+      return TerminalModel.fromJson(Map<String, dynamic>.from(data));
     } else {
       final errorMsg = response["message"] ?? "Failed to verify email OTP";
       throw NearpayException(errorMsg);
@@ -259,12 +315,12 @@ class FlutterTerminalSdk {
 
         return userList;
       } else {
-        throw Exception("Invalid data format");
+        throw NearpayException("Invalid data format");
       }
     } else {
       // Handle error if the response status is not "success"
       final errorMsg = response["message"] ?? "Failed to get users";
-      throw Exception(errorMsg);
+      throw NearpayException(errorMsg);
     }
   }
 
@@ -308,7 +364,7 @@ class FlutterTerminalSdk {
   }
 
   /// getTerminalList
-  Future<List<TerminalConnectionModel>> getTerminalList(String uuid,
+  Future<TerminalList> getTerminalList(String uuid,
       {int? page, int? pageSize}) async {
     final result = await _callAndReturnMapResponse(
       'getTerminalList',
@@ -321,12 +377,8 @@ class FlutterTerminalSdk {
     final status = result['status'];
     if (status == 'success') {
       final data = result['data'] as Map<String, dynamic>;
-      final terminals = data['terminals'] as List<dynamic>;
-      return terminals.map((terminalJson) {
-        return TerminalConnectionModel.fromJson(
-          terminalJson as Map<String, dynamic>,
-        );
-      }).toList();
+
+      return TerminalList.fromJson(data);
     } else {
       final message = result['message'] ?? 'Unknown error';
       throw NearpayException('Failed to retrieve terminals: $message');
@@ -356,5 +408,13 @@ class FlutterTerminalSdk {
       final message = response['message'] ?? 'Failed to connect to terminal';
       throw NearpayException(message);
     }
+  }
+
+// getPlatformVersion() {
+//   return _channel.invokeMethod<String>('getPlatformVersion');
+// }
+
+  getPlatformVersion() {
+    return "42";
   }
 }

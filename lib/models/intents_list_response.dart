@@ -19,12 +19,11 @@ class IntentsListResponse {
   }
 }
 
-// intent.dart
-
 /// Note: If the name `Intent` clashes with Flutter's Actions/Shortcuts API
 /// in your imports, consider renaming to `TerminalIntent` or prefixing imports.
 class Intent {
   final String? customerReferenceNumber;
+  final String? terminalId;
   final String? amount;
   final String id;
   final String? originalIntentId; // Kotlin: originalIntentID
@@ -33,8 +32,10 @@ class Intent {
   final String? createdAt;
   final String? completedAt;
   final String? cancelledAt;
+  final List<IntentTransaction>? transactions;
 
   const Intent({
+    this.terminalId,
     this.customerReferenceNumber,
     this.amount,
     required this.id,
@@ -44,13 +45,14 @@ class Intent {
     this.createdAt,
     this.completedAt,
     this.cancelledAt,
+    this.transactions,
   });
 
   /// Flexible factory:
   /// - Accepts both camelCase and snake_case keys.
   /// - Also tolerates `originalIntentID` (all-caps ID) from some payloads.
   factory Intent.fromJson(Map<String, dynamic> json) {
-    String? _str(List<String> keys) {
+    String? str(List<String> keys) {
       for (final k in keys) {
         final v = json[k];
         if (v == null) continue;
@@ -59,8 +61,8 @@ class Intent {
       return null;
     }
 
-    String _req(List<String> keys, String fieldName) {
-      final v = _str(keys);
+    String req(List<String> keys, String fieldName) {
+      final v = str(keys);
       if (v == null) {
         throw StateError('Missing required field: $fieldName');
       }
@@ -68,22 +70,31 @@ class Intent {
     }
 
     return Intent(
-      customerReferenceNumber: _str([
+      terminalId: str([
+        'terminalID',
+        'terminal_id',
+      ]),
+      customerReferenceNumber: str([
         'customerReferenceNumber',
         'customer_reference_number',
       ]),
-      amount: _str(['amount']),
-      id: _req(['id'], 'id'),
-      originalIntentId: _str([
+      amount: str(['amount']),
+      id: req(['id'], 'id'),
+      originalIntentId: str([
         'originalIntentId',
         'originalIntentID', // tolerate Kotlin-style ID suffix
         'original_intent_id',
       ]),
-      status: _str(['status']),
-      type: _req(['type'], 'type'),
-      createdAt: _str(['createdAt', 'created_at']),
-      completedAt: _str(['completedAt', 'completed_at']),
-      cancelledAt: _str(['cancelledAt', 'cancelled_at']),
+      status: str(['status']),
+      type: req(['type'], 'type'),
+      createdAt: str(['createdAt', 'created_at']),
+      completedAt: str(['completedAt', 'completed_at']),
+      cancelledAt: str(['cancelledAt', 'cancelled_at']),
+      transactions:  (json['transactions'] as List<dynamic>?)
+              ?.map((e) =>
+                  IntentTransaction.fromJson(e as Map<String, dynamic>))
+              .toList()
+
     );
   }
 
@@ -162,4 +173,89 @@ class Pagination {
         'total_pages': totalPages,
         'total_data': totalData,
       };
+}
+
+class IntentTransaction {
+  final String uuid;
+  final String? pan;
+  final LanguageContent? scheme;
+  final String? amountAuthorized;
+  final CurrencyDto? currency;
+  final bool? isApproved;
+  final bool? isReversed;
+  final String? retrievalReferenceNumber;
+  final String? customerReferenceNumber;
+
+  IntentTransaction({
+    required this.uuid,
+    this.pan,
+    this.scheme,
+    this.amountAuthorized,
+    this.currency,
+    this.isApproved,
+    this.retrievalReferenceNumber,
+    this.customerReferenceNumber,
+    this.isReversed
+  });
+
+  factory IntentTransaction.fromJson(Map<String, dynamic> json) {
+    return IntentTransaction(
+      uuid: json['uuid'] as String? ?? '',
+      pan: json['pan'] as String?,
+      scheme: json['scheme'] != null
+          ? LanguageContent.fromJson(json['scheme'] as Map<String, dynamic>)
+          : null,
+      amountAuthorized: json['amountAuthorized'] as String?,
+      currency: json['currency'] != null
+          ? CurrencyDto.fromJson(json['currency'] as Map<String, dynamic>)
+          : null,
+      isApproved: json['isApproved'] as bool?,
+      isReversed: json['isReversed'] as bool?,
+      retrievalReferenceNumber: json['retrievalReferenceNumber'] as String?,
+      customerReferenceNumber: json['customerReferenceNumber'] as String?,
+    );
+  }
+}
+
+class CurrencyDto {
+  final String? code;
+  final int? decimals;
+  final String? name;
+  final String? number;
+
+  CurrencyDto({
+    this.code,
+    this.decimals,
+    this.name,
+    this.number,
+  });
+
+  factory CurrencyDto.fromJson(Map<String, dynamic> json) {
+    return CurrencyDto(
+      code: json['code'] as String?,
+      decimals: (json['decimals'] as num?)?.toInt(),
+      name: json['name'] as String?,
+      number: json['number'] as String?,
+    );
+  }
+}
+
+class LanguageContent {
+  final String? arabic;
+  final String? english;
+  final String? turkish;
+
+  LanguageContent({
+    this.arabic,
+    this.english,
+    this.turkish,
+  });
+
+  factory LanguageContent.fromJson(Map<String, dynamic> json) {
+    return LanguageContent(
+      arabic: json['arabic'] as String?,
+      english: json['english'] as String?,
+      turkish: json['turkish'] as String?,
+    );
+  }
 }

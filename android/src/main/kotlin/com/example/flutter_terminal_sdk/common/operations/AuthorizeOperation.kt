@@ -53,6 +53,11 @@ class AuthorizeOperation(provider: NearpayProvider) : BaseOperation(provider) {
                     sendAuthorizeEvent(uuid, "readerClosed", null, null)
                 }
 
+                override fun onReaderDismissed() {
+                    Timber.tag("AuthorizeOperation").d("onReaderDismissed")
+                    sendAuthorizeEvent(uuid, "readerDismissed", null, null)
+                }
+
                 override fun onReaderDisplayed() {
                     Timber.tag("AuthorizeOperation").d("onReaderDisplayed")
                     sendAuthorizeEvent(uuid, "readerDisplayed", null, null)

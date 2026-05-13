@@ -44,6 +44,31 @@ class IntentDetails {
     );
   }
 
+  /// JSON serialization
+  Map<String, dynamic> toJson() {
+    return {
+      'intentId': intentId,
+      'referenceId': referenceId,
+      'type': type,
+      'status': status,
+      'amount': amount,
+      'pinRequired': pinRequired,
+      'createdAt': createdAt,
+      'completedAt': completedAt,
+      'receiptsUrl': receiptsUrl,
+      'transactions': transactions.map((e) => e.toJson()).toList(),
+    };
+  }
+
+
+  TransactionResponse? getLastTransaction() {
+    return transactions.last;
+  }
+
+  Receipt? getLastReceipt() {
+    return transactions.last.events?[0].receipt;
+  }
+
   @override
   String toString() =>
       'IntentDetails(intentId: $intentId, referenceId: $referenceId, type: $type, '

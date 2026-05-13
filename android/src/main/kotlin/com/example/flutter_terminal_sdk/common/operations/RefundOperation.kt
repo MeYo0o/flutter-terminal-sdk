@@ -47,12 +47,17 @@ class RefundOperation(provider: NearpayProvider) : BaseOperation(provider) {
             readCardListener = object : ReadCardListener {
                 override fun onReaderClosed() {
                     Timber.tag("RefundOperation").d("onReaderClosed")
-                    sendRefundEvent(refundUUID, "readerClosed", null, null)
+                    sendRefundEvent(intentUUID, "readerClosed", null, null)
+                }
+
+                override fun onReaderDismissed() {
+                    Timber.tag("RefundOperation").d("onReaderDismissed")
+                    sendRefundEvent(intentUUID, "readerDismissed", null, null)
                 }
 
                 override fun onReaderDisplayed() {
                     Timber.tag("RefundOperation").d("onReaderDisplayed")
-                    sendRefundEvent(refundUUID, "readerDisplayed", null, null)
+                    sendRefundEvent(intentUUID, "readerDisplayed", null, null)
                 }
 
                 override fun onReadCardSuccess() {

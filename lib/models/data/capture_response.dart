@@ -24,7 +24,13 @@ class CaptureResponse {
   }
 
   Receipt? getLastReceipt() {
-    return details?.transactions.last.events?[0].receipt;
+    if (details?.transactions.isEmpty ?? true) {
+      return null;
+    }
+    if (details?.transactions.last.events?.isEmpty == true) {
+      return null;
+    }
+    return details?.transactions.last.events?.first.receipt;
   }
 
   @override

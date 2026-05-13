@@ -21,7 +21,7 @@ class RefundVoidOperation(provider: NearpayProvider) : BaseOperation(provider) {
             ?: return response(ResponseHandler.error("MISSING_UUID", "Terminal uuid is required"))
 
         val intentUUID = filter.getString("intentUUID") ?: return response(
-            ResponseHandler.error("MISSING_REFUND_UUID", "Refund UUID is required")
+            ResponseHandler.error("MISSING_INTENT_UUID", "Intent UUID is required")
         )
         val amount = filter.getLong("amount") ?: return response(
             ResponseHandler.error("MISSING_AMOUNT", "Amount is required")
@@ -45,6 +45,11 @@ class RefundVoidOperation(provider: NearpayProvider) : BaseOperation(provider) {
                 override fun onReaderClosed() {
                     Timber.tag("RefundVoidOperation").d("onReaderClosed")
                     sendRefundEvent(intentUUID, "readerClosed", null, null)
+                }
+
+                override fun onReaderDismissed() {
+                    Timber.tag("RefundVoidOperation").d("onReaderDismissed")
+                    sendRefundEvent(intentUUID, "readerDismissed", null, null)
                 }
 
                 override fun onReaderDisplayed() {

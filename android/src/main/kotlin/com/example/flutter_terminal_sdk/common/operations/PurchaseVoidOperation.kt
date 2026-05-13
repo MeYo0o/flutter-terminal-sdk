@@ -60,6 +60,11 @@ class PurchaseVoidOperation(provider: NearpayProvider) : BaseOperation(provider)
                         sendPurchaseEvent(intentUUID, "readerClosed", null, null)
                     }
 
+                    override fun onReaderDismissed() {
+                        Timber.tag("PurchaseVoidOperation").d("onReaderDismissed")
+                        sendPurchaseEvent(intentUUID, "readerDismissed", null, null)
+                    }
+
                     override fun onReaderDisplayed() {
                         Timber.tag("PurchaseVoidOperation").d("onReaderDisplayed")
                         sendPurchaseEvent(intentUUID, "readerDisplayed", null, null)

@@ -9,12 +9,14 @@ class CardReaderCallbacks {
   final VoidCallback? onReaderFinished;
   final VoidCallback? onReaderClosed;
   final VoidCallback? onReaderDisplayed;
+  final VoidCallback? onReaderDismissed;
   final StringCallback? onReaderError;
   final VoidCallback? onCardReadSuccess;
   final StringCallback? onCardReadFailure;
 
   CardReaderCallbacks({
     this.onReadingStarted,
+    this.onReaderDismissed,
     this.onReaderWaiting,
     this.onReaderReading,
     this.onReaderRetry,

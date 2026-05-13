@@ -19,13 +19,12 @@ class GetIntentListOperation(provider: NearpayProvider) : BaseOperation(provider
         val page = filter.getInt("page")
         val pageSize = filter.getInt("pageSize")
         val isReconciled = filter.getBoolean("isReconciled")
-        val date = filter.getLong("date")
-        val startDate = filter.getLong("startDate")
-        val endDate = filter.getLong("endDate")
+        val startDate = filter.getString("startDate")
+        val endDate = filter.getString("endDate")
         val customerReferenceNumber = filter.getString("customerReferenceNumber")
 
         Timber.tag("GetTransactionListOperation").d(
-            "terminalUUID: $terminalUUID, page: $page, pageSize: $pageSize, isReconciled: $isReconciled, date: $date, startDate: $startDate, endDate: $endDate, customerReferenceNumber: $customerReferenceNumber"
+            "terminalUUID: $terminalUUID, page: $page, pageSize: $pageSize, isReconciled: $isReconciled, startDate: $startDate, endDate: $endDate, customerReferenceNumber: $customerReferenceNumber"
         )
 
         val terminal =
@@ -35,7 +34,6 @@ class GetIntentListOperation(provider: NearpayProvider) : BaseOperation(provider
             page = page,
             pageSize = pageSize,
             isReconciled = isReconciled,
-            date = date,
             startDate = startDate,
             endDate = endDate,
             customerReferenceNumber = customerReferenceNumber,

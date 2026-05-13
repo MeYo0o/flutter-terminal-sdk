@@ -29,6 +29,14 @@ class IntentResponseTurkey {
       status: json['status'] as String?,
     );
   }
+  
+  // add to json
+  Map<String, dynamic> toJson() {
+    return {
+      'details': details,
+      'status': status,
+    };
+  }
 
   @override
   String toString() {
@@ -94,6 +102,23 @@ class IntentDetailsTurkey {
           .map((e) => TransactionResponseTurkey.fromJson(e))
           .toList(growable: false),
     );
+  }
+  
+  /// JSON serialization
+  /// add to json
+  Map<String, dynamic> toJson() {
+    return {
+      'intentId': intentId,
+      'referenceId': referenceId,
+      'type': type,
+      'status': status,
+      'amount': amount,
+      'pinRequired': pinRequired,
+      'createdAt': createdAt,
+      'completedAt': completedAt,
+      'receiptsUrl': receiptsUrl,
+      'transactions': transactions.map((e) => e.toJson()).toList(),
+    };
   }
 
   @override
