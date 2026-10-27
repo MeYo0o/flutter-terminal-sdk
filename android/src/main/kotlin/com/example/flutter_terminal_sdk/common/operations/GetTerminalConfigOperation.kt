@@ -40,16 +40,17 @@ class GetTerminalConfigOperation(provider: NearpayProvider) : BaseOperation(prov
                         Timber.tag("onGetTerminalConfigFailure")
                             .d("GetTerminalConfig failed $error")
                         response(
-                            ResponseHandler.error(
+                            ResponseHandler.errorFromFailure(
                                 "GetTerminalConfig Failure",
-                                error.toString()
+                                error,
+                                "Failed to get terminal config"
                             )
                         )
                     }
                 }
             )
         } catch (e: Exception) {
-            response(ResponseHandler.error("GET_TERMINAL_CONFIG_FAILED", e.message ?: "Unknown error"))
+            response(ResponseHandler.errorFromFailure("GET_TERMINAL_CONFIG_FAILED", e, "Failed to get terminal config"))
         }
     }
 

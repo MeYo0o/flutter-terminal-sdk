@@ -3,6 +3,7 @@ package com.example.flutter_terminal_sdk.common.operations
 import com.example.flutter_terminal_sdk.common.NearpayProvider
 import com.example.flutter_terminal_sdk.common.filter.ArgsFilter
 import com.example.flutter_terminal_sdk.common.status.ResponseHandler
+import com.example.flutter_terminal_sdk.common.toJsonMap
 import com.google.gson.Gson
 import io.nearpay.terminalsdk.data.dto.PurchaseResponse
 import io.nearpay.terminalsdk.listeners.TipTransactionListener
@@ -19,7 +20,6 @@ class TipTransactionOperation(provider: NearpayProvider) : BaseOperation(provide
         val amount = filter.getLong("amount")
             ?: return response(ResponseHandler.error("MISSING_AMOUNT", "Amount is required"))
 
-
         val id = filter.getString("id")
             ?: return response(
                 ResponseHandler.error(
@@ -32,22 +32,41 @@ class TipTransactionOperation(provider: NearpayProvider) : BaseOperation(provide
 
         val terminal =
             provider.activity?.let { provider.terminalSdk?.getTerminal(it, terminalUUID) }
+                ?: return response(
+                    ResponseHandler.error(
+                        "TERMINAL_NOT_FOUND",
+                        "Terminal with uuid = $terminalUUID = not found"
+                    )
+                )
 
-        terminal?.tipTransaction(
+        terminal.tipTransaction(
             id = id,
             amount = amount,
             tipTransactionListener = object : TipTransactionListener {
 
                 override fun onTipTransactionFailure(tipTransactionFailure: TipTransactionFailure) {
                     Timber.tag("TipTransactionOperation").d("Tip Transaction failed $tipTransactionFailure")
-                    response(ResponseHandler.error("TIP_TRANSACTION_FAILURE", tipTransactionFailure.toString()))
+                    response(
+                        ResponseHandler.errorFromFailure(
+                            "TIP_TRANSACTION_FAILURE",
+                            tipTransactionFailure,
+                            "Tip transaction failed"
+                        )
+                    )
                 }
 
                 override fun onTipTransactionSuccess(tipResponse: PurchaseResponse) {
-                    val jsonString = gson.toJson(tipResponse)
-                    val map =
-                        gson.fromJson(jsonString, Map::class.java) as Map<*, *>
-                    response(ResponseHandler.success("Tip Transaction Success", map))
+                    val map = gson.toJsonMap(tipResponse)
+                    if (map == null) {
+                        response(
+                            ResponseHandler.error(
+                                "SERIALIZE_FAILED",
+                                "Failed to serialize tip transaction"
+                            )
+                        )
+                    } else {
+                        response(ResponseHandler.success("Tip Transaction Success", map))
+                    }
                 }
 
             }

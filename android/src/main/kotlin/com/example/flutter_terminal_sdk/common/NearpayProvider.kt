@@ -17,11 +17,35 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
+import io.nearpay.terminalsdk.RoutingSession
+import io.nearpay.terminalsdk.Terminal
 
 class NearpayProvider(private val appContext: Activity, val methodChannel: MethodChannel) {
     var activity: Activity? = null
     private var isSdkInitialized = false
     var terminalSdk: TerminalSDK? = null
+
+    var routingSessions: MutableMap<String, RoutingSession> = mutableMapOf()
+    var routingTerminals: MutableMap<String, Terminal> = mutableMapOf()
+
+    var connectedTerminalUUID: String? = null
+
+    private var currentTerminal: Terminal? = null
+
+    fun setCurrentTerminal(terminal: Terminal) {
+        currentTerminal = terminal
+        connectedTerminalUUID = terminal.terminalUUID
+    }
+
+    fun clearCurrentTerminal() {
+        currentTerminal = null
+        connectedTerminalUUID = null
+    }
+
+    fun getCurrentTerminal(): Terminal {
+        return currentTerminal
+            ?: throw IllegalStateException("No terminal selected – call connectTerminal first")
+    }
 
     suspend fun initializeSdk(filter: ArgsFilter) {
         if (isSdkInitialized) return
@@ -30,7 +54,6 @@ class NearpayProvider(private val appContext: Activity, val methodChannel: Metho
             throw IllegalStateException("Activity must be attached before initializing NearpayProvider")
         }
 
-        // Extract parameters from ArgsFilter (with some default values if needed)
         val environment = filter.getString("environment") ?: throw IllegalArgumentException("Environment is required")
         val country = filter.getString("country") ?: throw IllegalArgumentException("Country is required")
         val googleCloudProjectNumber = filter.getLong("googleCloudProjectNumber") ?: throw IllegalArgumentException("Google Cloud Project Number is required")
@@ -41,6 +64,7 @@ class NearpayProvider(private val appContext: Activity, val methodChannel: Metho
         val supportSecondDisplay: String? = filter.getString("supportSecondDisplay")
         val networkConfigurationString: String? = filter.getString("networkConfiguration")
         val networkConfigurationId: Int? = filter.getInt("networkConfigurationId")
+        val requireNfc: Boolean? = filter.getBoolean("requireNfc")
 
         Timber.d("Initializing TerminalSDK with uiDockPositionString: $uiDockPositionString")
         Timber.d("Initializing TerminalSDK with secondDisplayDockPosition: $secondDisplayDockPosition")
@@ -49,25 +73,22 @@ class NearpayProvider(private val appContext: Activity, val methodChannel: Metho
         Timber.d("Initializing TerminalSDK with supportSecondDisplay: $supportSecondDisplay")
         Timber.d("Initializing TerminalSDK with pinPosition: $pinPosition")
         Timber.d("Initializing TerminalSDK with networkConfiguration: $networkConfigurationString id=$networkConfigurationId")
+        Timber.d("Initializing TerminalSDK with requireNfc: $requireNfc")
 
-        // Convert environment string to SdkEnvironment enum
         val sdkEnvironment = when (environment.uppercase()) {
             "PRODUCTION" -> SdkEnvironment.PRODUCTION
             "SANDBOX" -> SdkEnvironment.SANDBOX
             "INTERNAL" -> SdkEnvironment.INTERNAL
-            else -> SdkEnvironment.SANDBOX // Fallback
+            else -> SdkEnvironment.SANDBOX
         }
 
-        // Convert country string to Country enum
         val sdkCountry = when (country.uppercase()) {
             "SA" -> Country.SA
             "TR" -> Country.TR
             "USA" -> Country.USA
-            "JO" -> Country.JO
-            "UAE" -> Country.UAE
-            else -> Country.SA // Fallback
+            "UAE", "AE" -> Country.UAE
+            else -> Country.SA
         }
-
 
         val uiDockPositionValue = when (uiDockPositionString?.uppercase()) {
             "TOP_LEFT" -> UiDockPosition.TOP_LEFT
@@ -79,7 +100,7 @@ class NearpayProvider(private val appContext: Activity, val methodChannel: Metho
             "ABSOLUTE_CENTER" -> UiDockPosition.ABSOLUTE_CENTER
             "TOP_CENTER" -> UiDockPosition.TOP_CENTER
             "BOTTOM_CENTER" -> UiDockPosition.BOTTOM_CENTER
-            else -> null // Fallback to default if not provided
+            else -> null
         }
         val secondDisplayDockPositionValue = when (secondDisplayDockPosition?.uppercase()) {
             "TOP_LEFT" -> UiDockPosition.TOP_LEFT
@@ -91,7 +112,7 @@ class NearpayProvider(private val appContext: Activity, val methodChannel: Metho
             "ABSOLUTE_CENTER" -> UiDockPosition.ABSOLUTE_CENTER
             "TOP_CENTER" -> UiDockPosition.TOP_CENTER
             "BOTTOM_CENTER" -> UiDockPosition.BOTTOM_CENTER
-            else -> null // Fallback to default if not provided
+            else -> null
         }
 
         val pinPositionValue = when (pinPosition?.uppercase()) {
@@ -104,14 +125,14 @@ class NearpayProvider(private val appContext: Activity, val methodChannel: Metho
             "ABSOLUTE_CENTER" -> UiDockPosition.ABSOLUTE_CENTER
             "TOP_CENTER" -> UiDockPosition.TOP_CENTER
             "BOTTOM_CENTER" -> UiDockPosition.BOTTOM_CENTER
-            else -> null // Fallback to default if not provided
+            else -> null
         }
 
         val supportSecondDisplayValue = when (supportSecondDisplay?.uppercase()) {
             "ENABLE" -> SupportSecondDisplay.ENABLE
             "DISABLE" -> SupportSecondDisplay.DISABLE
             "INITIAL" -> SupportSecondDisplay.DEFAULT
-            else -> null // Fallback
+            else -> null
         }
 
         val networkConfigurationValue: NetworkConfiguration? = when {
@@ -134,7 +155,6 @@ class NearpayProvider(private val appContext: Activity, val methodChannel: Metho
         Timber.d("Initializing TerminalSDK with pinPositionValue: $pinPositionValue")
         Timber.d("Initializing TerminalSDK with networkConfigurationValue: $networkConfigurationValue")
 
-
         try {
             val builder = TerminalSDK.Builder()
                 .activity(activity!!)
@@ -148,6 +168,7 @@ class NearpayProvider(private val appContext: Activity, val methodChannel: Metho
                     supportSecondDisplayValue?.let { supportSecondDisplay(it) }
                     secondDisplayDockPositionValue?.let { secondDisplayDockPosition(it) }
                     networkConfigurationValue?.let { networkConfiguration(it) }
+                    requireNfc?.let { requireNfc(it) }
                     initializationListener(object : TerminalSDKInitializationListener {
                         override fun onInitializationFailure(throwable: Throwable) {
                             Timber.tag("TerminalSDKInit")
@@ -162,7 +183,6 @@ class NearpayProvider(private val appContext: Activity, val methodChannel: Metho
                                     )
                                 }
                             }
-
 
                         }
 
@@ -194,6 +214,28 @@ class NearpayProvider(private val appContext: Activity, val methodChannel: Metho
 
     fun attachActivity(currentActivity: Activity) {
         activity = currentActivity
+    }
+
+    fun saveRoutingSession (uuid: String, session: RoutingSession) {
+        routingSessions[uuid] = session
+
+    }
+
+    fun getRoutingSession(uuid: String): RoutingSession? {
+        return routingSessions[uuid]
+    }
+
+    fun clearRoutingSession(uuid: String) {
+        routingSessions.remove(uuid)
+        routingTerminals.remove(uuid)
+    }
+
+    fun saveRoutingTerminal(uuid: String, terminal: Terminal) {
+        routingTerminals[uuid] = terminal
+    }
+
+    fun getRoutingTerminal(uuid: String): Terminal? {
+        return routingTerminals[uuid]
     }
 
     fun detachActivity() {

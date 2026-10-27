@@ -1,6 +1,5 @@
 package com.example.flutter_terminal_sdk.common.operations
 
-
 import com.example.flutter_terminal_sdk.common.NearpayProvider
 import com.example.flutter_terminal_sdk.common.filter.ArgsFilter
 import com.example.flutter_terminal_sdk.common.status.ResponseHandler
@@ -9,7 +8,6 @@ import io.nearpay.terminalsdk.data.dto.LoginData
 import io.nearpay.terminalsdk.listeners.VerifyMobileListener
 import io.nearpay.terminalsdk.listeners.failures.VerifyMobileFailure
 import timber.log.Timber
-
 
 class VerifyMobileOtpOperation(provider: NearpayProvider) : BaseOperation(provider) {
     override fun run(filter: ArgsFilter, response: (Map<String, Any>) -> Unit) {
@@ -26,7 +24,11 @@ class VerifyMobileOtpOperation(provider: NearpayProvider) : BaseOperation(provid
             code = code,
         )
 
-        provider.terminalSdk?.verify(loginData, object : VerifyMobileListener {
+        val terminalSdk = provider.terminalSdk ?: return response(
+            ResponseHandler.error("NOT_INITIALIZED", "TerminalSDK is not initialized. Call initialize first.")
+        )
+
+        terminalSdk.verify(loginData, object : VerifyMobileListener {
 
             override fun onVerifyMobileSuccess(user: User) {
                 val simpleUser = mapOf(
@@ -40,9 +42,14 @@ class VerifyMobileOtpOperation(provider: NearpayProvider) : BaseOperation(provid
             }
 
             override fun onVerifyMobileFailure(verifyMobileFailure: VerifyMobileFailure) {
-                val errorMessage = verifyMobileFailure.toString()
                 Timber.tag("asdf").d("%s", verifyMobileFailure.toString())
-                response(ResponseHandler.error("VERIFY_FAILURE", errorMessage))
+                response(
+                    ResponseHandler.errorFromFailure(
+                        "VERIFY_FAILURE",
+                        verifyMobileFailure,
+                        "Failed to verify OTP"
+                    )
+                )
             }
         })
     }

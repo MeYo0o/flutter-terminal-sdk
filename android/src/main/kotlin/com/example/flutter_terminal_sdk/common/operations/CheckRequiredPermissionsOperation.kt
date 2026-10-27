@@ -9,21 +9,19 @@ import timber.log.Timber
 
 class CheckRequiredPermissionsOperation(provider: NearpayProvider) : BaseOperation(provider) {
 
-    //gson
     private val gson = Gson()
 
     override fun run(filter: ArgsFilter, response: (Map<String, Any>) -> Unit) {
 
         var listOfPermissions = provider.checkRequiredPermissions() ?: return response(
             ResponseHandler.error("INVALID_REQUEST", "Not able to check permissions")
-        ) // return List<PermissionStatus>
+        )
 
         Timber.d("Permissions fetched: $listOfPermissions")
 
         val jsonString = gson.toJson(listOfPermissions)
         val map: List<Any> =
             gson.fromJson(jsonString, object : TypeToken<List<Any?>?>() {}.type)
-
 
         response(ResponseHandler.success("Get permissions successfully", map))
 

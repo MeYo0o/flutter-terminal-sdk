@@ -11,12 +11,9 @@ import timber.log.Timber
 class GetPendingTotalOperation(provider: NearpayProvider) : BaseOperation(provider) {
 
     override fun run(filter: ArgsFilter, response: (Map<String, Any>) -> Unit) {
-        // Extract required arguments
         val terminalUUID = filter.getString("terminalUUID")
             ?: return response(ResponseHandler.error("MISSING_UUID", "Terminal uuid is required"))
 
-
-        // Retrieve the TerminalSDK instance
         val terminal: Terminal =
             provider.terminalSdk?.getTerminal(provider.activity!!, terminalUUID)
                 ?: return response(
@@ -27,18 +24,17 @@ class GetPendingTotalOperation(provider: NearpayProvider) : BaseOperation(provid
                 )
         Timber.d("Got Terminal successfully")
         try {
-            // Initiate the purchase process
             terminal.getPendingTotal(pendingTotalListener = object :
                 PendingTotalListener {
-
 
                 override fun onPendingTotalFailure(pendingTotalFailure: PendingTotalFailure) {
                     Timber.tag("onPendingTotalFailure")
                         .d("GetPendingTotal failed $pendingTotalFailure")
                     response(
-                        ResponseHandler.error(
+                        ResponseHandler.errorFromFailure(
                             "GetPendingTotal Failure",
-                            pendingTotalFailure.toString()
+                            pendingTotalFailure,
+                            "Get pending total failed"
                         )
                     )
                 }
@@ -48,8 +44,7 @@ class GetPendingTotalOperation(provider: NearpayProvider) : BaseOperation(provid
                 }
             })
         } catch (e: Exception) {
-            // Handle any unexpected exceptions during purchase
-            response(ResponseHandler.error("RECONCILE_FAILED", "Reconcile failed: ${e.message}"))
+            response(ResponseHandler.errorFromFailure("GET_PENDING_TOTAL_FAILED", e, "Get pending total failed"))
         }
     }
 

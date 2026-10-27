@@ -1,6 +1,5 @@
 package com.example.flutter_terminal_sdk.common.operations
 
-
 import com.example.flutter_terminal_sdk.common.NearpayProvider
 import com.example.flutter_terminal_sdk.common.filter.ArgsFilter
 import com.example.flutter_terminal_sdk.common.status.ResponseHandler
@@ -9,7 +8,6 @@ import io.nearpay.terminalsdk.data.dto.JWTLoginData
 import io.nearpay.terminalsdk.listeners.JWTLoginListener
 import io.nearpay.terminalsdk.listeners.failures.JWTLoginFailure
 import timber.log.Timber
-
 
 class VerifyJWTOperation(provider: NearpayProvider) : BaseOperation(provider) {
     override fun run(filter: ArgsFilter, response: (Map<String, Any>) -> Unit) {
@@ -24,13 +22,12 @@ class VerifyJWTOperation(provider: NearpayProvider) : BaseOperation(provider) {
         provider.terminalSdk?.jwtLogin(loginData, object : JWTLoginListener {
 
             override fun onJWTLoginSuccess(terminal: Terminal) {
+                provider.setCurrentTerminal(terminal)
 
-                // wait for the terminal to be ready
                 Timber.tag("jwtLoginSuccess").d("Terminal is ready: ${terminal.isTerminalReady()}")
 
                 if (!terminal.isTerminalReady()) {
                     Timber.tag("jwtLoginSuccess").d("Terminal is not ready yet, waiting...")
-                    // wait 3 seconds for the terminal to be ready
                     val handler = android.os.Handler(android.os.Looper.getMainLooper())
                     handler.postDelayed({
                         if (terminal.isTerminalReady()) {
@@ -49,12 +46,10 @@ class VerifyJWTOperation(provider: NearpayProvider) : BaseOperation(provider) {
                                 )
                             )
                         } else {
-                            // wait 2 seconds more
                             Timber.tag("jwtLoginSuccess")
                                 .d("Terminal is still not ready after waiting 3 seconds, waiting 2 more seconds...")
 
                             handler.postDelayed({
-                                // return the response with terminal not ready
                                 Timber.tag("jwtLoginSuccess")
                                     .d("Terminal is still not ready after waiting 5 seconds")
                                 val resultData = mapOf(
@@ -70,10 +65,10 @@ class VerifyJWTOperation(provider: NearpayProvider) : BaseOperation(provider) {
                                         resultData
                                     )
                                 )
-                            }, 2000) // 2 seconds delay
+                            }, 2000)
 
                         }
-                    }, 3000) // 3 seconds delay
+                    }, 3000)
                 } else {
                     Timber.tag("jwtLoginSuccess").d("Terminal is already ready")
                     val resultData = mapOf(
@@ -91,13 +86,17 @@ class VerifyJWTOperation(provider: NearpayProvider) : BaseOperation(provider) {
                     )
                 }
 
-
             }
 
             override fun onJWTLoginFailure(jwtLoginFailure: JWTLoginFailure) {
-                val errorMessage = (jwtLoginFailure as JWTLoginFailure.LoginFailure).message
-                Timber.tag("errorMessage").d("$errorMessage")
-                response(ResponseHandler.error("VERIFY_FAILURE", errorMessage.toString()))
+                Timber.tag("errorMessage").d("$jwtLoginFailure")
+                response(
+                    ResponseHandler.errorFromFailure(
+                        "VERIFY_FAILURE",
+                        jwtLoginFailure,
+                        "Failed to verify JWT"
+                    )
+                )
             }
         })
     }

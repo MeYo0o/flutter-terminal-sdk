@@ -9,7 +9,6 @@ import io.nearpay.terminalsdk.listeners.VerifyEmailListener
 import io.nearpay.terminalsdk.listeners.failures.VerifyEmailFailure
 import timber.log.Timber
 
-
 class VerifyEmailOtpOperation(provider: NearpayProvider) : BaseOperation(provider) {
     override fun run(filter: ArgsFilter, response: (Map<String, Any>) -> Unit) {
 
@@ -25,10 +24,13 @@ class VerifyEmailOtpOperation(provider: NearpayProvider) : BaseOperation(provide
             mobile = "",
             code = code,
         )
+
+        val terminalSdk = provider.terminalSdk ?: return response(
+            ResponseHandler.error("NOT_INITIALIZED", "TerminalSDK is not initialized. Call initialize first.")
+        )
         try {
 
-
-        provider.terminalSdk?.verify(loginData, object : VerifyEmailListener {
+        terminalSdk.verify(loginData, object : VerifyEmailListener {
 
             override fun onVerifyEmailSuccess(user: User) {
                 val simpleUser = mapOf(
@@ -42,14 +44,19 @@ class VerifyEmailOtpOperation(provider: NearpayProvider) : BaseOperation(provide
             }
 
             override fun onVerifyEmailFailure(verifyEmailFailure: VerifyEmailFailure) {
-                val errorMessage = verifyEmailFailure.toString()
                 Timber.tag("verify").d("%s", verifyEmailFailure.toString())
-                response(ResponseHandler.error("VERIFY_FAILURE", errorMessage))
+                response(
+                    ResponseHandler.errorFromFailure(
+                        "VERIFY_FAILURE",
+                        verifyEmailFailure,
+                        "Failed to verify OTP"
+                    )
+                )
             }
         })
         } catch (e: Throwable) {
             Timber.tag("verify").d("%s", e.message)
-            response(ResponseHandler.error("VERIFY_FAILURE", e.message ?: "Unknown error"))
+            response(ResponseHandler.errorFromFailure("VERIFY_FAILURE", e, "Failed to verify OTP"))
         }
     }
 }

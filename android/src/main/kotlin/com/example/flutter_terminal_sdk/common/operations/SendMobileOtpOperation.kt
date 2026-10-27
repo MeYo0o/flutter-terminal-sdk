@@ -13,14 +13,18 @@ class SendMobileOtpOperation(provider: NearpayProvider) : BaseOperation(provider
             ResponseHandler.error("MISSING_MOBILE", "Mobile number is required")
         )
 
-        provider.terminalSdk?.sendOTP(MobileLogin(mobile), object : SendOTPMobileListener {
+        val terminalSdk = provider.terminalSdk ?: return response(
+            ResponseHandler.error("NOT_INITIALIZED", "TerminalSDK is not initialized. Call initialize first.")
+        )
+
+        terminalSdk.sendOTP(MobileLogin(mobile), object : SendOTPMobileListener {
             override fun onSendOTPMobileSuccess(otpResponse: OtpResponse) {
                 response(ResponseHandler.success("OTP sent successfully"))
 
             }
 
             override fun onSendOTPMobileFailure(otpMobileFailure: OTPMobileFailure) {
-                response(ResponseHandler.error("OTP_FAILURE", otpMobileFailure.toString() ))
+                response(ResponseHandler.errorFromFailure("OTP_FAILURE", otpMobileFailure, "Failed to send OTP"))
             }
         })
     }

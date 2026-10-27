@@ -5,19 +5,23 @@ import android.os.Looper
 import com.example.flutter_terminal_sdk.common.NearpayProvider
 import com.example.flutter_terminal_sdk.common.filter.ArgsFilter
 import com.example.flutter_terminal_sdk.common.status.ResponseHandler
+import com.example.flutter_terminal_sdk.common.JSON_MAP_FAILED_MESSAGE
+import com.example.flutter_terminal_sdk.common.toJsonMap
 import com.google.gson.Gson
 import io.nearpay.terminalsdk.Terminal
 import io.nearpay.terminalsdk.data.dto.GeneratedQRCode
 import io.nearpay.terminalsdk.data.dto.IntentDetails
+import io.nearpay.terminalsdk.data.dto.Location
+import io.nearpay.terminalsdk.data.dto.PurchaseResponse
 import io.nearpay.terminalsdk.data.dto.QrStatusResponse
 import io.nearpay.terminalsdk.listeners.QrPaymentUiListener
+import io.nearpay.terminalsdk.utils.NearpayException
 import timber.log.Timber
 
 class PurchaseWithQROperation(provider: NearpayProvider) : BaseOperation(provider) {
     private val gson = Gson()
 
     override fun run(filter: ArgsFilter, response: (Map<String, Any>) -> Unit) {
-        // Extract required arguments
         val uuid = filter.getString("uuid")
             ?: return response(ResponseHandler.error("MISSING_UUID", "Terminal uuid is required"))
 
@@ -31,8 +35,15 @@ class PurchaseWithQROperation(provider: NearpayProvider) : BaseOperation(provide
 
         val enableUiDismiss = filter.getBoolean("enableUiDismiss") ?: true
 
+        val lat = filter.getDouble("lat")
+        val long = filter.getDouble("long")
+        val isLocationFromMock = filter.getBoolean("isLocationFromMock")
+        val location = if (lat != null && long != null) {
+            Location(long = long, lat = lat, isLocationFromMock = isLocationFromMock)
+        } else {
+            null
+        }
 
-        // Retrieve the TerminalSDK instance
         val terminal: Terminal = provider.terminalSdk?.getTerminal(provider.activity!!, uuid)
             ?: return response(
                 ResponseHandler.error(
@@ -43,90 +54,46 @@ class PurchaseWithQROperation(provider: NearpayProvider) : BaseOperation(provide
 
         Timber.d("Got Terminal successfully")
         try {
-            // Initiate the purchase process
-            terminal.generateQrCodeWithUi(
-                id = id,
-                amount = amount,
-                customerReferenceNumber = customerReferenceNumber,
-                enableUiDismiss = enableUiDismiss,
-                qrPaymentUiListener = object : QrPaymentUiListener {
+            val qrPaymentUiListener = object : QrPaymentUiListener {
 
                     override fun onQrUiPresented(qrCode: GeneratedQRCode) {
-                        val jsonString = gson.toJson(qrCode)
                         Timber.tag("PurchaseWithQrOperation")
-                            .d("onQrUiPresented : $jsonString")
-                        val map = gson.fromJson(jsonString, Map::class.java) as Map<*, *>
-                        sendPurchaseWithQREvent(
-                            id,
-                            "qrUiPresented",
-                            null,
-                            map
-
-                        )
+                            .d("onQrUiPresented : $qrCode")
+                        sendSerializedQrEvent(id, "qrUiPresented", qrCode)
                     }
 
                     override fun onQrPaymentStatusUpdated(status: QrStatusResponse) {
-                        val jsonString = gson.toJson(status)
                         Timber.tag("PurchaseWithQrOperation")
-                            .d("onQrPaymentStatusUpdated: $jsonString")
-                        val map = gson.fromJson(jsonString, Map::class.java) as Map<*, *>
-                        sendPurchaseWithQREvent(
-                            id,
-                            "qrPaymentStatusUpdated",
-                            null,
-                            map
-                        )
+                            .d("onQrPaymentStatusUpdated: $status")
+                        sendSerializedQrEvent(id, "qrPaymentStatusUpdated", status)
                     }
 
                     override fun onQrPaymentStatusExpired(status: QrStatusResponse) {
-                        val jsonString = gson.toJson(status)
                         Timber.tag("PurchaseWithQrOperation")
-                            .d("onQrPaymentStatusExpired: $jsonString")
-                        val map = gson.fromJson(jsonString, Map::class.java) as Map<*, *>
-                        sendPurchaseWithQREvent(
-                            id,
-                            "qrPaymentStatusExpired",
-                            null,
-                            map
-                        )
+                            .d("onQrPaymentStatusExpired: $status")
+                        sendSerializedQrEvent(id, "qrPaymentStatusExpired", status)
                     }
 
                     override fun onQrPaymentStatusCompleted(status: QrStatusResponse) {
-                        val jsonString = gson.toJson(status)
                         Timber.tag("PurchaseWithQrOperation")
-                            .d("onQrPaymentStatusCompleted: $jsonString")
-                        val map = gson.fromJson(jsonString, Map::class.java) as Map<*, *>
-                        sendPurchaseWithQREvent(
-                            id,
-                            "qrPaymentStatusCompleted",
-                            null,
-                            map
-                        )
+                            .d("onQrPaymentStatusCompleted: $status")
+                        sendSerializedQrEvent(id, "qrPaymentStatusCompleted", status)
                     }
 
-                    override fun onQrPaymentApproved(intent: IntentDetails) {
-                        val jsonString = gson.toJson(intent)
+                    override fun onQrPaymentApproved(response: PurchaseResponse) {
                         Timber.tag("PurchaseWithQrOperation")
-                            .d("onQrPaymentApproved: $jsonString")
-                        val map = gson.fromJson(jsonString, Map::class.java) as Map<*, *>
-                        sendPurchaseWithQREvent(
-                            id,
-                            "qrPaymentApproved",
-                            null,
-                            map
-                        )
+                            .d("onQrPaymentApproved: ${response.details}")
+                        sendSerializedQrEvent(id, "qrPaymentApproved", response.details)
                     }
 
-                    override fun onQrPaymentDeclined(intent: IntentDetails?) {
-                        val jsonString = gson.toJson(intent)
+                    override fun onQrPaymentDeclined(response: PurchaseResponse?) {
                         Timber.tag("PurchaseWithQrOperation")
-                            .d("onQrPaymentDeclined: $jsonString")
-                        val map = gson.fromJson(jsonString, Map::class.java) as Map<*, *>
+                            .d("onQrPaymentDeclined: ${response?.details}")
                         sendPurchaseWithQREvent(
                             id,
                             "qrPaymentDeclined",
                             null,
-                            map
+                            gson.toJsonMap(response?.details)
                         )
                     }
 
@@ -141,16 +108,9 @@ class PurchaseWithQROperation(provider: NearpayProvider) : BaseOperation(provide
                     }
 
                     override fun onQrPaymentStatusFailed(status: QrStatusResponse) {
-                        val jsonString = gson.toJson(status)
                         Timber.tag("PurchaseWithQrOperation")
-                            .d("onQrPaymentStatusFailed: $jsonString")
-                        val map = gson.fromJson(jsonString, Map::class.java) as Map<*, *>
-                        sendPurchaseWithQREvent(
-                            id,
-                            "qrPaymentStatusFailed",
-                            null,
-                            map
-                        )
+                            .d("onQrPaymentStatusFailed: $status")
+                        sendSerializedQrEvent(id, "qrPaymentStatusFailed", status)
                     }
 
                     override fun onUiClosed() {
@@ -164,18 +124,57 @@ class PurchaseWithQROperation(provider: NearpayProvider) : BaseOperation(provide
 
                     }
 
+                    override fun onNearpayException(nearPayException: NearpayException) {
+                        val message = nearPayException.message ?: "QR payment failed"
+                        Timber.tag("PurchaseWithQrOperation")
+                            .e("onNearpayException: $message")
+                        sendPurchaseWithQREvent(
+                            id,
+                            "qrPaymentFailure",
+                            message,
+                            null
+                        )
+                    }
 
                 }
 
-            )
+            if (location != null) {
+                terminal.generateQrCodeWithUi(
+                    intentId = id,
+                    amount = amount,
+                    location = location,
+                    customerReferenceNumber = customerReferenceNumber,
+                    enableUiDismiss = enableUiDismiss,
+                    qrPaymentUiListener = qrPaymentUiListener
+                )
+            } else {
+                terminal.generateQrCodeWithUi(
+                    intentId = id,
+                    amount = amount,
+                    customerReferenceNumber = customerReferenceNumber,
+                    enableUiDismiss = enableUiDismiss,
+                    qrPaymentUiListener = qrPaymentUiListener
+                )
+            }
+            response(ResponseHandler.success("Purchase with QR operation started"))
         } catch (e: Exception) {
             Timber.tag("PurchaseWithQrOperation").e(e, "Purchase operation failed")
             response(
-                ResponseHandler.error(
+                ResponseHandler.errorFromFailure(
                     "PURCHASE_FAILED",
-                    "Purchase with qr failed: ${e.message}"
+                    e,
+                    "Purchase with qr failed"
                 )
             )
+        }
+    }
+
+    private fun sendSerializedQrEvent(id: String, eventType: String, value: Any) {
+        val map = gson.toJsonMap(value)
+        if (map == null) {
+            sendPurchaseWithQREvent(id, "qrPaymentFailure", JSON_MAP_FAILED_MESSAGE, null)
+        } else {
+            sendPurchaseWithQREvent(id, eventType, null, map)
         }
     }
 
@@ -198,7 +197,6 @@ class PurchaseWithQROperation(provider: NearpayProvider) : BaseOperation(provide
             }
 
         } catch (e: Exception) {
-            // Log the error but do not disrupt the purchase flow
             Timber.e(
                 e,
                 "Failed to send purchase with qr event: $eventType for id: $id with error: ${e.message}"

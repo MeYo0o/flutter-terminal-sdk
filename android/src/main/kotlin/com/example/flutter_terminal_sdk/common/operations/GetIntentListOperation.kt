@@ -3,6 +3,7 @@ package com.example.flutter_terminal_sdk.common.operations
 import com.example.flutter_terminal_sdk.common.NearpayProvider
 import com.example.flutter_terminal_sdk.common.filter.ArgsFilter
 import com.example.flutter_terminal_sdk.common.status.ResponseHandler
+import com.example.flutter_terminal_sdk.common.toJsonMap
 import com.google.gson.Gson
 import io.nearpay.terminalsdk.data.dto.IntentsListResponse
 import io.nearpay.terminalsdk.listeners.GetIntentsListListener
@@ -18,13 +19,14 @@ class GetIntentListOperation(provider: NearpayProvider) : BaseOperation(provider
 
         val page = filter.getInt("page")
         val pageSize = filter.getInt("pageSize")
+        val status = filter.getString("status")
         val isReconciled = filter.getBoolean("isReconciled")
         val startDate = filter.getString("startDate")
         val endDate = filter.getString("endDate")
         val customerReferenceNumber = filter.getString("customerReferenceNumber")
 
         Timber.tag("GetTransactionListOperation").d(
-            "terminalUUID: $terminalUUID, page: $page, pageSize: $pageSize, isReconciled: $isReconciled, startDate: $startDate, endDate: $endDate, customerReferenceNumber: $customerReferenceNumber"
+            "terminalUUID: $terminalUUID, page: $page, pageSize: $pageSize, status: $status, isReconciled: $isReconciled, startDate: $startDate, endDate: $endDate, customerReferenceNumber: $customerReferenceNumber"
         )
 
         val terminal =
@@ -33,6 +35,7 @@ class GetIntentListOperation(provider: NearpayProvider) : BaseOperation(provider
         terminal?.getIntentsList(
             page = page,
             pageSize = pageSize,
+            status = status,
             isReconciled = isReconciled,
             startDate = startDate,
             endDate = endDate,
@@ -43,26 +46,33 @@ class GetIntentListOperation(provider: NearpayProvider) : BaseOperation(provider
                     Timber.tag("GetTransactionListOperation")
                         .d("GetTransactionListFailure failed $error")
                     response(
-                        ResponseHandler.error(
-                            "GET_TRANSACTION_LIST_FAILURE", error.toString()
+                        ResponseHandler.errorFromFailure(
+                            "GET_TRANSACTION_LIST_FAILURE", error, "Failed to get transaction list"
                         )
                     )
                 }
 
                 override fun onGetIntentsListSuccess(intentsList: IntentsListResponse) {
-                    val jsonString = gson.toJson(intentsList)
-                    val map = gson.fromJson(jsonString, Map::class.java) as Map<*, *>
+                    val map = gson.toJsonMap(intentsList)
 
                     Timber.tag("GetTransactionListOperation")
                         .d("GetTransactionListSuccess map $map")
-                    response(
-                        ResponseHandler.success(
-                            "Transaction list fetched successfully",
-                            map
+                    if (map == null) {
+                        response(
+                            ResponseHandler.error(
+                                "SERIALIZE_FAILED",
+                                "Failed to serialize transaction list"
+                            )
                         )
-                    )
+                    } else {
+                        response(
+                            ResponseHandler.success(
+                                "Transaction list fetched successfully",
+                                map
+                            )
+                        )
+                    }
                 }
-
 
             })
     }

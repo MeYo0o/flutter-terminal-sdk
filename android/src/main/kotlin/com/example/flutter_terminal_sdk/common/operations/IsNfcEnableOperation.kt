@@ -8,12 +8,17 @@ import timber.log.Timber
 class IsNfcEnableOperation(provider: NearpayProvider) : BaseOperation(provider) {
 
     override fun run(filter: ArgsFilter, response: (Map<String, Any>) -> Unit) {
-
-        val isEnable = provider.isNfcEnabled()
-
-        Timber.d("Nfc: $isEnable")
-
-        response(ResponseHandler.success("Get NFC status successfully", isEnable))
-
+        try {
+            val isEnable = provider.isNfcEnabled()
+            Timber.d("Nfc: $isEnable")
+            response(ResponseHandler.success("Get NFC status successfully", isEnable))
+        } catch (e: Exception) {
+            return response(
+                ResponseHandler.error(
+                    "IS_NFC_ENABLE_FAILED",
+                    e.message ?: "Failed to get NFC status"
+                )
+            )
+        }
     }
 }

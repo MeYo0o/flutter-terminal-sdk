@@ -1,0 +1,4 @@
+framework module TerminalSDK {
+  header "TerminalSDK-Swift.h"
+  requires objc
+}

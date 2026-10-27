@@ -3,8 +3,9 @@ package com.example.flutter_terminal_sdk.common.operations
 import com.example.flutter_terminal_sdk.common.NearpayProvider
 import com.example.flutter_terminal_sdk.common.filter.ArgsFilter
 import com.example.flutter_terminal_sdk.common.status.ResponseHandler
+import com.example.flutter_terminal_sdk.common.JSON_MAP_FAILED_MESSAGE
+import com.example.flutter_terminal_sdk.common.toJsonMap
 import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 import io.nearpay.terminalsdk.data.dto.PaymentScheme
 import io.nearpay.terminalsdk.data.dto.RefundResponse
 import io.nearpay.terminalsdk.listeners.OpenRefundListener
@@ -72,7 +73,7 @@ class OpenRefundOperation(provider: NearpayProvider) : BaseOperation(provider) {
                     sendOpenRefundEvent(
                         intentUUID,
                         "cardReadFailure",
-                        readCardFailure.toString(),
+                        ResponseHandler.eventMessage(readCardFailure),
                         null
                     )
 
@@ -124,10 +125,22 @@ class OpenRefundOperation(provider: NearpayProvider) : BaseOperation(provider) {
                 override fun onOpenRefundCompleted(refundResponse: RefundResponse) {
                     Timber.tag("OpenRefundOperation")
                         .d("onOpenRefundCompleted $refundResponse")
-                    val jsonString = gson.toJson(refundResponse)
-                    val map: Map<String, Any> =
-                        gson.fromJson(jsonString, object : TypeToken<Map<String, Any>>() {}.type)
-                    sendOpenRefundEvent(intentUUID, "sendOpenRefundTransactionCompleted", null, map)
+                    val map = gson.toJsonMap(refundResponse)
+                    if (map == null) {
+                        sendOpenRefundEvent(
+                            intentUUID,
+                            "sendTransactionFailure",
+                            JSON_MAP_FAILED_MESSAGE,
+                            null
+                        )
+                    } else {
+                        sendOpenRefundEvent(
+                            intentUUID,
+                            "sendOpenRefundTransactionCompleted",
+                            null,
+                            map
+                        )
+                    }
                 }
 
                 override fun onOpenRefundFailure(openRefundFailure: OpenRefundFailure) {
@@ -136,13 +149,13 @@ class OpenRefundOperation(provider: NearpayProvider) : BaseOperation(provider) {
                     sendOpenRefundEvent(
                         intentUUID,
                         "sendTransactionFailure",
-                        openRefundFailure.toString(),
+                        ResponseHandler.eventMessage(openRefundFailure),
                         null
                     )
                 }
 
-
             })
+        response(ResponseHandler.success("Open refund operation started"))
     }
 
     private fun sendOpenRefundEvent(
@@ -161,7 +174,6 @@ class OpenRefundOperation(provider: NearpayProvider) : BaseOperation(provider) {
         try {
             provider.methodChannel.invokeMethod("openRefundEvent", eventArgs)
         } catch (e: Exception) {
-            // Log the error but do not disrupt the refund flow
             Timber.e(
                 e,
                 "Failed to send open refund event: $eventType for intentUUID: $intentUUID"

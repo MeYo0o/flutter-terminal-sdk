@@ -1,6 +1,6 @@
 name: flutter_terminal_sdk
 description: "A new Flutter plugin project."
-version: 0.0.2
+version: 0.2.6
 homepage:
 
 environment:
@@ -10,7 +10,6 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  plugin_platform_interface: ^2.1.8
 
 dev_dependencies:
   flutter_test:

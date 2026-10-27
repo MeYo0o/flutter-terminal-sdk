@@ -5,6 +5,8 @@ import android.os.Looper
 import com.example.flutter_terminal_sdk.common.NearpayProvider
 import com.example.flutter_terminal_sdk.common.filter.ArgsFilter
 import com.example.flutter_terminal_sdk.common.status.ResponseHandler
+import com.example.flutter_terminal_sdk.common.JSON_MAP_FAILED_MESSAGE
+import com.example.flutter_terminal_sdk.common.toJsonMap
 import com.google.gson.Gson
 import io.nearpay.terminalsdk.Terminal
 import io.nearpay.terminalsdk.data.dto.PaymentScheme
@@ -13,13 +15,13 @@ import io.nearpay.terminalsdk.listeners.ReadCardListener
 import io.nearpay.terminalsdk.listeners.SendTransactionListener
 import io.nearpay.terminalsdk.listeners.failures.ReadCardFailure
 import io.nearpay.terminalsdk.listeners.failures.SendTransactionFailure
+import io.nearpay.terminalsdk.utils.toImage
 import timber.log.Timber
 
 class PurchaseOperation(provider: NearpayProvider) : BaseOperation(provider) {
     private val gson = Gson()
 
     override fun run(filter: ArgsFilter, response: (Map<String, Any>) -> Unit) {
-        // Extract required arguments
         val uuid = filter.getString("uuid")
             ?: return response(ResponseHandler.error("MISSING_UUID", "Terminal uuid is required"))
 
@@ -27,7 +29,6 @@ class PurchaseOperation(provider: NearpayProvider) : BaseOperation(provider) {
             ?: return response(ResponseHandler.error("MISSING_AMOUNT", "Amount is required"))
 
         val customerReferenceNumber = filter.getString("customerReferenceNumber")
-
 
         val intentUUID = filter.getString("intentUUID")
             ?: return response(
@@ -39,8 +40,16 @@ class PurchaseOperation(provider: NearpayProvider) : BaseOperation(provider) {
         val schemeString = filter.getString("scheme")
         val scheme = schemeString?.uppercase()?.let { PaymentScheme.valueOf(it) }
 
+        invalidWholeNumber(filter, "surchargeAmount", "INVALID_SURCHARGE_AMOUNT")
+            ?.let { return response(it) }
+        invalidWholeNumber(filter, "taxPercentage", "INVALID_TAX_PERCENTAGE")
+            ?.let { return response(it) }
 
-        // Retrieve the TerminalSDK instance
+        val surchargeAmount = filter.getLong("surchargeAmount")
+        val taxPercentage = filter.getLong("taxPercentage")
+
+        val withTokenization = filter.getBoolean("withTokenization") ?: false
+
         val terminal: Terminal = provider.terminalSdk?.getTerminal(provider.activity!!, uuid)
             ?: return response(
                 ResponseHandler.error(
@@ -51,12 +60,14 @@ class PurchaseOperation(provider: NearpayProvider) : BaseOperation(provider) {
 
         Timber.d("Got Terminal successfully")
         try {
-            // Initiate the purchase process
             terminal.purchase(
                 amount = amount,
                 scheme = scheme,
                 intentUUID = intentUUID,
                 customerReferenceNumber = customerReferenceNumber,
+                surchargeAmount = surchargeAmount,
+                taxPercentage = taxPercentage,
+                withTokenization = withTokenization,
                 readCardListener = object : ReadCardListener {
                     override fun onReaderClosed() {
                         Timber.tag("PurchaseOperation").d("onReaderClosed")
@@ -88,7 +99,7 @@ class PurchaseOperation(provider: NearpayProvider) : BaseOperation(provider) {
                         sendPurchaseEvent(
                             intentUUID,
                             "cardReadFailure",
-                            readCardFailure.toString(),
+                            ResponseHandler.eventMessage(readCardFailure),
                             null
                         )
                     }
@@ -146,30 +157,38 @@ class PurchaseOperation(provider: NearpayProvider) : BaseOperation(provider) {
                         Timber.tag("PurchaseOperation")
                             .d("sendTransactionCompleted $transactionResponse")
 
-                        val jsonString = gson.toJson(transactionResponse)
-                        val map = gson.fromJson(jsonString, Map::class.java) as Map<*, *>
-                        sendPurchaseEvent(
-                            intentUUID,
-                            "sendPurchaseTransactionCompleted",
-                            null,
-                            map
-                        )
+                        val map = gson.toJsonMap(transactionResponse)
+                        if (map == null) {
+                            sendPurchaseEvent(
+                                intentUUID,
+                                "sendTransactionFailure",
+                                JSON_MAP_FAILED_MESSAGE,
+                                null
+                            )
+                        } else {
+                            sendPurchaseEvent(
+                                intentUUID,
+                                "sendPurchaseTransactionCompleted",
+                                null,
+                                map
+                            )
+                        }
                     }
-
 
                     override fun onSendTransactionFailure(sendTransactionFailure: SendTransactionFailure) {
                         sendPurchaseEvent(
                             intentUUID,
                             "sendTransactionFailure",
-                            sendTransactionFailure.toString(),
+                            ResponseHandler.eventMessage(sendTransactionFailure),
                             null
                         )
                     }
                 }
             )
+            response(ResponseHandler.success("Purchase operation started"))
         } catch (e: Exception) {
             Timber.tag("PurchaseOperation").e(e, "Purchase operation failed")
-            response(ResponseHandler.error("PURCHASE_FAILED", "Purchase failed: ${e.message}"))
+            response(ResponseHandler.errorFromFailure("PURCHASE_FAILED", e, "Purchase failed"))
         }
     }
 
@@ -192,7 +211,6 @@ class PurchaseOperation(provider: NearpayProvider) : BaseOperation(provider) {
             }
 
         } catch (e: Exception) {
-            // Log the error but do not disrupt the purchase flow
             Timber.e(
                 e,
                 "Failed to send purchase event: $eventType for intentUUID: $intentUUID with error: ${e.message}"

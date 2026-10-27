@@ -3,6 +3,7 @@ package com.example.flutter_terminal_sdk.common.operations
 import com.example.flutter_terminal_sdk.common.NearpayProvider
 import com.example.flutter_terminal_sdk.common.filter.ArgsFilter
 import com.example.flutter_terminal_sdk.common.status.ResponseHandler
+import com.example.flutter_terminal_sdk.common.toJsonMap
 import com.google.gson.Gson
 import io.nearpay.terminalsdk.data.dto.ReconciliationListResponse
 import io.nearpay.terminalsdk.listeners.GetReconciliationListListener
@@ -25,7 +26,6 @@ class GetReconciliationListOperation(provider: NearpayProvider) : BaseOperation(
         val startDate = filter.getLong("startDate")
         val endDate = filter.getLong("endDate")
 
-
         val terminal =
             provider.activity?.let { provider.terminalSdk?.getTerminal(it, terminalUUID) }
 
@@ -37,16 +37,23 @@ class GetReconciliationListOperation(provider: NearpayProvider) : BaseOperation(
             getReconciliationListListener = object : GetReconciliationListListener {
 
                 override fun onGetReconciliationListFailure(error: GetReconciliationListFailure) {
-                    response(ResponseHandler.error("GetReconciliationList", error.toString()))
+                    response(ResponseHandler.errorFromFailure("GetReconciliationList", error, "Failed to get reconciliation list"))
 
                 }
 
                 override fun onGetReconciliationListSuccess(reconciliationListResponse: ReconciliationListResponse) {
-                    val jsonString = gson.toJson(reconciliationListResponse)
-                    val map = gson.fromJson(jsonString, Map::class.java) as Map<*, *>
-                    response(ResponseHandler.success("GetReconciliationList", map))
+                    val map = gson.toJsonMap(reconciliationListResponse)
+                    if (map == null) {
+                        response(
+                            ResponseHandler.error(
+                                "SERIALIZE_FAILED",
+                                "Failed to serialize reconciliation list"
+                            )
+                        )
+                    } else {
+                        response(ResponseHandler.success("GetReconciliationList", map))
+                    }
                 }
-
 
             }
         )

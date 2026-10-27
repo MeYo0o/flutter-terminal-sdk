@@ -2,26 +2,38 @@ package com.example.flutter_terminal_sdk
 
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import io.mockk.mockk
+import io.mockk.verify
 import kotlin.test.Test
-import org.mockito.Mockito
 
-/*
- * This demonstrates a simple unit test of the Kotlin portion of this plugin's implementation.
- *
- * Once you have built the plugin's example app, you can run these tests from the command
- * line by running `./gradlew testDebugUnitTest` in the `example/android/` directory, or
- * you can run them directly from IDEs that support JUnit such as Android Studio.
+/**
+ * The plugin's dispatch contract, before any operation is reached. A call that
+ * arrives while the plugin has no operator factory - no `initialize`, or the
+ * activity detached - must come back as a channel error, because Dart awaits
+ * every call and a silent drop hangs the app.
  */
-
 internal class FlutterTerminalSdkPluginTest {
-  @Test
-  fun onMethodCall_getPlatformVersion_returnsExpectedValue() {
-    val plugin = FlutterTerminalSdkPlugin()
+    @Test
+    fun `an operation call before initialize fails with PLUGIN_NOT_INITIALIZED`() {
+        val plugin = FlutterTerminalSdkPlugin()
+        val result = mockk<MethodChannel.Result>(relaxed = true)
 
-    val call = MethodCall("getPlatformVersion", null)
-    val mockResult: MethodChannel.Result = Mockito.mock(MethodChannel.Result::class.java)
-    plugin.onMethodCall(call, mockResult)
+        plugin.onMethodCall(MethodCall("purchase", null), result)
 
-    Mockito.verify(mockResult).success("Android " + android.os.Build.VERSION.RELEASE)
-  }
+        verify(exactly = 1) { result.error("PLUGIN_NOT_INITIALIZED", any(), null) }
+        verify(exactly = 0) { result.success(any()) }
+    }
+
+    @Test
+    fun `getVersion answers before initialize, from the bundled fallback`() {
+        val plugin = FlutterTerminalSdkPlugin()
+        val result = mockk<MethodChannel.Result>(relaxed = true)
+
+        // The example app reads the SDK version on its first frame, so this one
+        // has to answer without an activity or an initialized SDK.
+        plugin.onMethodCall(MethodCall("getVersion", null), result)
+
+        verify(exactly = 1) { result.success(any<String>()) }
+        verify(exactly = 0) { result.error(any(), any(), any()) }
+    }
 }

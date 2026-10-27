@@ -1,0 +1,13 @@
+enum PaymentScheme {
+  MADA,
+  VISA,
+  TROY,
+  MAESTRO,
+  MASTERCARD,
+  AMERICAN_EXPRESS,
+  GCC_NET,
+  UNION_PAY,
+  JCB,
+  DISCOVER,
+  UNDEFINED,
+}

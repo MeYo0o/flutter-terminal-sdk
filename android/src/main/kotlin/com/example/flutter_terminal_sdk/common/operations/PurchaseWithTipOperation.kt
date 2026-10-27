@@ -5,6 +5,8 @@ import android.os.Looper
 import com.example.flutter_terminal_sdk.common.NearpayProvider
 import com.example.flutter_terminal_sdk.common.filter.ArgsFilter
 import com.example.flutter_terminal_sdk.common.status.ResponseHandler
+import com.example.flutter_terminal_sdk.common.JSON_MAP_FAILED_MESSAGE
+import com.example.flutter_terminal_sdk.common.toJsonMap
 import com.google.gson.Gson
 import io.nearpay.terminalsdk.Terminal
 import io.nearpay.terminalsdk.data.dto.PaymentScheme
@@ -19,19 +21,16 @@ class PurchaseWithTipOperation(provider: NearpayProvider) : BaseOperation(provid
     private val gson = Gson()
 
     override fun run(filter: ArgsFilter, response: (Map<String, Any>) -> Unit) {
-        // Extract required arguments
         val uuid = filter.getString("uuid")
             ?: return response(ResponseHandler.error("MISSING_UUID", "Terminal uuid is required"))
 
         val amount = filter.getLong("amount")
             ?: return response(ResponseHandler.error("MISSING_AMOUNT", "Amount is required"))
-        
-        //amountOther
+
         val amountOther = filter.getLong("amountOther")
             ?: return response(ResponseHandler.error("MISSING_AMOUNT_OTHER", "Amount Other is required"))
 
         val customerReferenceNumber = filter.getString("customerReferenceNumber")
-
 
         val intentUUID = filter.getString("intentUUID")
             ?: return response(
@@ -43,8 +42,6 @@ class PurchaseWithTipOperation(provider: NearpayProvider) : BaseOperation(provid
         val schemeString = filter.getString("scheme")
         val scheme = schemeString?.uppercase()?.let { PaymentScheme.valueOf(it) }
 
-
-        // Retrieve the TerminalSDK instance
         val terminal: Terminal = provider.terminalSdk?.getTerminal(provider.activity!!, uuid)
             ?: return response(
                 ResponseHandler.error(
@@ -55,7 +52,6 @@ class PurchaseWithTipOperation(provider: NearpayProvider) : BaseOperation(provid
 
         Timber.d("Got Terminal successfully")
         try {
-            // Initiate the purchase process
             terminal.purchaseWithTip(
                 amount = amount,
                 amountOther = amountOther,
@@ -93,7 +89,7 @@ class PurchaseWithTipOperation(provider: NearpayProvider) : BaseOperation(provid
                         sendPurchaseWithTipEvent(
                             intentUUID,
                             "cardReadFailure",
-                            readCardFailure.toString(),
+                            ResponseHandler.eventMessage(readCardFailure),
                             null
                         )
                     }
@@ -151,30 +147,38 @@ class PurchaseWithTipOperation(provider: NearpayProvider) : BaseOperation(provid
                         Timber.tag("PurchaseWithTipOperation")
                             .d("sendTransactionCompleted $transactionResponse")
 
-                        val jsonString = gson.toJson(transactionResponse)
-                        val map = gson.fromJson(jsonString, Map::class.java) as Map<*, *>
-                        sendPurchaseWithTipEvent(
-                            intentUUID,
-                            "sendPurchaseWithTipTransactionCompleted",
-                            null,
-                            map
-                        )
+                        val map = gson.toJsonMap(transactionResponse)
+                        if (map == null) {
+                            sendPurchaseWithTipEvent(
+                                intentUUID,
+                                "sendTransactionFailure",
+                                JSON_MAP_FAILED_MESSAGE,
+                                null
+                            )
+                        } else {
+                            sendPurchaseWithTipEvent(
+                                intentUUID,
+                                "sendPurchaseWithTipTransactionCompleted",
+                                null,
+                                map
+                            )
+                        }
                     }
-
 
                     override fun onSendTransactionFailure(sendTransactionFailure: SendTransactionFailure) {
                         sendPurchaseWithTipEvent(
                             intentUUID,
                             "sendTransactionFailure",
-                            sendTransactionFailure.toString(),
+                            ResponseHandler.eventMessage(sendTransactionFailure),
                             null
                         )
                     }
                 }
             )
+            response(ResponseHandler.success("Purchase with tip operation started"))
         } catch (e: Exception) {
             Timber.tag("PurchaseWithTipOperation").e(e, "Purchase operation failed")
-            response(ResponseHandler.error("PURCHASE_FAILED", "Purchase failed: ${e.message}"))
+            response(ResponseHandler.errorFromFailure("PURCHASE_FAILED", e, "Purchase failed"))
         }
     }
 
@@ -197,7 +201,6 @@ class PurchaseWithTipOperation(provider: NearpayProvider) : BaseOperation(provid
             }
 
         } catch (e: Exception) {
-            // Log the error but do not disrupt the purchase flow
             Timber.e(
                 e,
                 "Failed to send purchaseWithTipEvent event: $eventType for intentUUID: $intentUUID with error: ${e.message}"

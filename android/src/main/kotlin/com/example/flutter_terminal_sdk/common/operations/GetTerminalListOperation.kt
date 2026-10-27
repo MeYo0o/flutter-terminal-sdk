@@ -24,14 +24,12 @@ class GetTerminalListOperation(provider: NearpayProvider) : BaseOperation(provid
                     )
             } catch (e: Throwable) {
                 return response(
-                    ResponseHandler.error("INVALID_USER", "${e.message}")
+                    ResponseHandler.errorFromFailure("INVALID_USER", e, "No user found for UUID: $uuid")
                 )
             }
 
         Timber.d("Fetching terminals for user with UUID: $uuid")
-        // Flag to ensure only one response is sent
         var isResponseSent = false
-
 
         user.listTerminals(
             page = page,
@@ -100,9 +98,10 @@ class GetTerminalListOperation(provider: NearpayProvider) : BaseOperation(provid
                     Timber.e("Failed to fetch terminals: $getTerminalsFailure")
                     isResponseSent = true
                     response(
-                        ResponseHandler.error(
+                        ResponseHandler.errorFromFailure(
                             "GET_TERMINALS_FAILURE",
-                            getTerminalsFailure.toString()
+                            getTerminalsFailure,
+                            "Failed to fetch terminals"
                         )
                     )
                 }

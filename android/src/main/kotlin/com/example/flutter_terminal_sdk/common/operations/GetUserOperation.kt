@@ -13,7 +13,6 @@ class GetUserOperation(provider: NearpayProvider) : BaseOperation(provider) {
 
         Timber.d("GetUserOperation: $uuid")
 
-
         val user =
             try {
                 provider.terminalSdk?.getUserByUUID(uuid)
@@ -22,7 +21,7 @@ class GetUserOperation(provider: NearpayProvider) : BaseOperation(provider) {
                     )
             } catch (e: Throwable) {
                 return response(
-                    ResponseHandler.error("INVALID_USER", "${e.message}")
+                    ResponseHandler.errorFromFailure("INVALID_USER", e, "No user found for UUID: $uuid")
                 )
             }
 

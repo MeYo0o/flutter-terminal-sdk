@@ -4,8 +4,9 @@ import io.nearpay.terminalsdk.listeners.failures.RefundTransactionFailure
 import com.example.flutter_terminal_sdk.common.NearpayProvider
 import com.example.flutter_terminal_sdk.common.filter.ArgsFilter
 import com.example.flutter_terminal_sdk.common.status.ResponseHandler
+import com.example.flutter_terminal_sdk.common.JSON_MAP_FAILED_MESSAGE
+import com.example.flutter_terminal_sdk.common.toJsonMap
 import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 import io.nearpay.terminalsdk.data.dto.IntentResponseTurkey
 import io.nearpay.terminalsdk.data.dto.PaymentScheme
 import io.nearpay.terminalsdk.listeners.ReadCardListener
@@ -34,7 +35,6 @@ class RefundVoidOperation(provider: NearpayProvider) : BaseOperation(provider) {
 
         val terminal =
             provider.activity?.let { provider.terminalSdk?.getTerminal(it, terminalUUID) }
-
 
         terminal?.refundVoid(
             amount = amount,
@@ -68,7 +68,7 @@ class RefundVoidOperation(provider: NearpayProvider) : BaseOperation(provider) {
                 override fun onReadCardFailure(readCardFailure: ReadCardFailure) {
                     Timber.tag("RefundOperation").d("onReadCardFailure $readCardFailure")
                     sendRefundEvent(
-                        intentUUID, "cardReadFailure", readCardFailure.toString(), null
+                        intentUUID, "cardReadFailure", ResponseHandler.eventMessage(readCardFailure), null
                     )
 
                 }
@@ -113,13 +113,24 @@ class RefundVoidOperation(provider: NearpayProvider) : BaseOperation(provider) {
             refundVoidListener = object : RefundVoidListener {
                 override fun onRefundVoidCompleted(refundVoidResponse: IntentResponseTurkey) {
                     Timber.tag("onRefundVoidSuccess").d("onRefundVoidSuccess $refundVoidResponse")
-                    val jsonString = gson.toJson(refundVoidResponse)
-                    val map: Map<String, Any> =
-                        gson.fromJson(jsonString, object : TypeToken<Map<String, Any>>() {}.type)
-                    sendRefundEvent(intentUUID, "sendTransactionVoidCompleted", null, map)
+                    val map = gson.toJsonMap(refundVoidResponse)
+                    if (map == null) {
+                        sendRefundEvent(
+                            intentUUID,
+                            "sendTransactionFailure",
+                            JSON_MAP_FAILED_MESSAGE,
+                            null
+                        )
+                    } else {
+                        sendRefundEvent(
+                            intentUUID,
+                            "sendTransactionVoidCompleted",
+                            null,
+                            map
+                        )
+                    }
 
                 }
-
 
                 override fun onRefundVoidFailure(refundTransactionFailure: RefundTransactionFailure) {
                     Timber.tag("onRefundVoidFailure")
@@ -127,13 +138,13 @@ class RefundVoidOperation(provider: NearpayProvider) : BaseOperation(provider) {
                     sendRefundEvent(
                         intentUUID,
                         "sendTransactionFailure",
-                        refundTransactionFailure.toString(),
+                        ResponseHandler.eventMessage(refundTransactionFailure),
                         null
                     )
                 }
 
-
             })
+        response(ResponseHandler.success("Refund void operation started"))
     }
 
     private fun sendRefundEvent(
@@ -148,7 +159,6 @@ class RefundVoidOperation(provider: NearpayProvider) : BaseOperation(provider) {
         try {
             provider.methodChannel.invokeMethod("refundVoidEvent", eventArgs)
         } catch (e: Exception) {
-            // Log the error but do not disrupt the refund flow
             Timber.e(
                 e,
                 "Failed to send refund void event: $eventType for intentUUID: $intentUUID"

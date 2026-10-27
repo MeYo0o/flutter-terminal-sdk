@@ -3,6 +3,7 @@ package com.example.flutter_terminal_sdk.common.operations
 import com.example.flutter_terminal_sdk.common.NearpayProvider
 import com.example.flutter_terminal_sdk.common.filter.ArgsFilter
 import com.example.flutter_terminal_sdk.common.status.ResponseHandler
+import com.example.flutter_terminal_sdk.common.toJsonMap
 import com.google.gson.Gson
 import io.nearpay.terminalsdk.data.dto.IntentDetails
 import io.nearpay.terminalsdk.listeners.GetIntentListener
@@ -20,7 +21,6 @@ class GetIntentOperation(provider: NearpayProvider) : BaseOperation(provider) {
             ResponseHandler.error("MISSING_TRANSACTION_UUID", "Transaction UUID is required")
         )
 
-
         val terminal =
             provider.activity?.let { provider.terminalSdk?.getTerminal(it, terminalUUID) }
 
@@ -30,21 +30,30 @@ class GetIntentOperation(provider: NearpayProvider) : BaseOperation(provider) {
                 override fun onGetIntentFailure(error: GetIntentFailure) {
                     Timber.tag("handleReadCard").d("GetTransactionFailure failed $error")
                     response(
-                        ResponseHandler.error(
-                            "GET_TRANSACTION_FAILURE", error.toString()
+                        ResponseHandler.errorFromFailure(
+                            "GET_TRANSACTION_FAILURE", error, "Failed to get transaction"
                         )
                     )                }
 
                 override fun onGetIntentSuccess(intent: IntentDetails) {
-                    val jsonString = gson.toJson(intent)
-                    val map = gson.fromJson(jsonString, Map::class.java) as Map<*, *>
+                    val map = gson.toJsonMap(intent)
                     Timber.tag("handleReadCard").d("GetTransactionSuccess transaction $intent")
-                    response(
-                        ResponseHandler.success(
-                            "Transaction details fetched successfully",
-                            map
+                    if (map == null) {
+                        response(
+                            ResponseHandler.error(
+                                "SERIALIZE_FAILED",
+                                "Failed to serialize transaction details"
+                            )
                         )
-                    )                }
+                    } else {
+                        response(
+                            ResponseHandler.success(
+                                "Transaction details fetched successfully",
+                                map
+                            )
+                        )
+                    }
+                }
 
             }
 

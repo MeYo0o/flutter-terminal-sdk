@@ -3,6 +3,7 @@ package com.example.flutter_terminal_sdk.common.operations
 import com.example.flutter_terminal_sdk.common.NearpayProvider
 import com.example.flutter_terminal_sdk.common.filter.ArgsFilter
 import com.example.flutter_terminal_sdk.common.status.ResponseHandler
+import com.example.flutter_terminal_sdk.common.toJsonMap
 import com.google.gson.Gson
 import io.nearpay.terminalsdk.data.dto.IncrementResponse
 import io.nearpay.terminalsdk.listeners.IncrementAuthorizationListener
@@ -19,7 +20,6 @@ class IncrementAuthorizationOperation(provider: NearpayProvider) : BaseOperation
         val amount = filter.getLong("amount")
             ?: return response(ResponseHandler.error("MISSING_AMOUNT", "Amount is required"))
 
-
         val uuid = filter.getString("uuid")
             ?: return response(ResponseHandler.error("MISSING_UUID", "UUID is required"))
 
@@ -30,7 +30,6 @@ class IncrementAuthorizationOperation(provider: NearpayProvider) : BaseOperation
                     "Authorization UUID is required"
                 )
             )
-
 
         val terminal =
             provider.activity?.let { provider.terminalSdk?.getTerminal(it, terminalUUID) }
@@ -44,23 +43,32 @@ class IncrementAuthorizationOperation(provider: NearpayProvider) : BaseOperation
                 override fun onIncrementAuthorizationCompleted(incrementAuthorization: IncrementResponse) {
                     Timber.tag("IncrementAuthorizationOperation")
                         .d("onIncrementAuthorizationCompleted $incrementAuthorization")
-                    val jsonString = gson.toJson(incrementAuthorization)
-                    val map = gson.fromJson(jsonString, Map::class.java) as Map<*, *>
-                    response(
-                        ResponseHandler.success(
-                            "Increment authorization completed successfully",
-                            map
+                    val map = gson.toJsonMap(incrementAuthorization)
+                    if (map == null) {
+                        response(
+                            ResponseHandler.error(
+                                "SERIALIZE_FAILED",
+                                "Failed to serialize increment authorization"
+                            )
                         )
-                    )
+                    } else {
+                        response(
+                            ResponseHandler.success(
+                                "Increment authorization completed successfully",
+                                map
+                            )
+                        )
+                    }
                 }
 
                 override fun onIncrementAuthorizationFailure(incrementAuthorizationFailure: IncrementAuthorizationFailure) {
                     Timber.tag("IncrementAuthorizationOperation")
                         .d("onIncrementAuthorizationFailure $incrementAuthorizationFailure")
                     response(
-                        ResponseHandler.error(
+                        ResponseHandler.errorFromFailure(
                             "INVALID_INCREMENT_AUTHORIZATION",
-                            incrementAuthorizationFailure.toString()
+                            incrementAuthorizationFailure,
+                            "Increment authorization failed"
                         )
                     )
                 }
@@ -69,6 +77,5 @@ class IncrementAuthorizationOperation(provider: NearpayProvider) : BaseOperation
         )
 
     }
-
 
 }

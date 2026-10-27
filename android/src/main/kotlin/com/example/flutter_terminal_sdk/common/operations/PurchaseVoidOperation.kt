@@ -3,6 +3,8 @@ package com.example.flutter_terminal_sdk.common.operations
 import com.example.flutter_terminal_sdk.common.NearpayProvider
 import com.example.flutter_terminal_sdk.common.filter.ArgsFilter
 import com.example.flutter_terminal_sdk.common.status.ResponseHandler
+import com.example.flutter_terminal_sdk.common.JSON_MAP_FAILED_MESSAGE
+import com.example.flutter_terminal_sdk.common.toJsonMap
 import com.google.gson.Gson
 import io.nearpay.terminalsdk.Terminal
 import io.nearpay.terminalsdk.data.dto.IntentResponseTurkey
@@ -17,13 +19,11 @@ class PurchaseVoidOperation(provider: NearpayProvider) : BaseOperation(provider)
     private val gson = Gson()
 
     override fun run(filter: ArgsFilter, response: (Map<String, Any>) -> Unit) {
-        // Extract required arguments
         val uuid = filter.getString("uuid")
             ?: return response(ResponseHandler.error("MISSING_UUID", "Terminal uuid is required"))
 
         val amount = filter.getLong("amount")
             ?: return response(ResponseHandler.error("MISSING_AMOUNT", "Amount is required"))
-
 
         val intentUUID = filter.getString("intentUUID")
             ?: return response(
@@ -38,7 +38,6 @@ class PurchaseVoidOperation(provider: NearpayProvider) : BaseOperation(provider)
         val schemeString = filter.getString("scheme")
         val scheme = schemeString?.uppercase()?.let { PaymentScheme.valueOf(it) }
 
-        // Retrieve the TerminalSDK instance
         val terminal: Terminal = provider.terminalSdk?.getTerminal(provider.activity!!, uuid)
             ?: return response(
                 ResponseHandler.error(
@@ -48,7 +47,6 @@ class PurchaseVoidOperation(provider: NearpayProvider) : BaseOperation(provider)
             )
         Timber.d("Got Terminal successfully")
         try {
-            // Initiate the purchase process
             terminal.purchaseVoid(
                 amount = amount,
                 scheme = scheme,
@@ -83,7 +81,7 @@ class PurchaseVoidOperation(provider: NearpayProvider) : BaseOperation(provider)
                         sendPurchaseEvent(
                             intentUUID,
                             "cardReadFailure",
-                            readCardFailure.toString(),
+                            ResponseHandler.eventMessage(readCardFailure),
                             null
                         )
                     }
@@ -123,36 +121,43 @@ class PurchaseVoidOperation(provider: NearpayProvider) : BaseOperation(provider)
                 },
                 sendPurchaseVoidListener = object : SendPurchaseVoidListener {
 
-
                     override fun onSendPurchaseVoidCompleted(purchaseVoidResponse: IntentResponseTurkey) {
-                        val jsonString = gson.toJson(purchaseVoidResponse)
-                        val map = gson.fromJson(jsonString, Map::class.java) as Map<*, *>
-                        sendPurchaseEvent(
-                            intentUUID,
-                            "sendTransactionVoidCompleted",
-                            null,
-                            map
-                        )
+                        val map = gson.toJsonMap(purchaseVoidResponse)
+                        if (map == null) {
+                            sendPurchaseEvent(
+                                intentUUID,
+                                "sendTransactionFailure",
+                                JSON_MAP_FAILED_MESSAGE,
+                                null
+                            )
+                        } else {
+                            sendPurchaseEvent(
+                                intentUUID,
+                                "sendTransactionVoidCompleted",
+                                null,
+                                map
+                            )
+                        }
 
                     }
-
 
                     override fun onSendPurchaseVoidFailure(sendPurchaseVoidFailure: SendTransactionFailure) {
                         sendPurchaseEvent(
                             intentUUID,
                             "sendTransactionFailure",
-                            sendPurchaseVoidFailure.toString(),
+                            ResponseHandler.eventMessage(sendPurchaseVoidFailure),
                             null
                         )
                     }
                 },
             )
+            response(ResponseHandler.success("Purchase void operation started"))
         } catch (e: Exception) {
-            // Handle any unexpected exceptions during purchase
             response(
-                ResponseHandler.error(
+                ResponseHandler.errorFromFailure(
                     "PURCHASE_VOID_FAILED",
-                    "Purchase void failed: ${e.message}"
+                    e,
+                    "Purchase void failed"
                 )
             )
         }
@@ -174,7 +179,6 @@ class PurchaseVoidOperation(provider: NearpayProvider) : BaseOperation(provider)
         try {
             provider.methodChannel.invokeMethod("purchaseVoidEvent", eventArgs)
         } catch (e: Exception) {
-            // Log the error but do not disrupt the purchase flow
             Timber.e(
                 e,
                 "Failed to send purchase void event: $eventType for intentUUID: $intentUUID"

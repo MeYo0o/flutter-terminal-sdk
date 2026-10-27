@@ -14,6 +14,8 @@ class LogoutOperation(provider: NearpayProvider) : BaseOperation(provider) {
             ResponseHandler.error("INVALID_USER", "No user found for UUID: $userUUID")
         )
 
+        runCatching { provider.getCurrentTerminal().stopReceiptViaNfcShare() }
+        provider.clearCurrentTerminal()
 
         response(ResponseHandler.success("User logout successfully", null))
 

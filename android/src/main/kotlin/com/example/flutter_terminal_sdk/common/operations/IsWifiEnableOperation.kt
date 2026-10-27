@@ -8,12 +8,17 @@ import timber.log.Timber
 class IsWifiEnableOperation(provider: NearpayProvider) : BaseOperation(provider) {
 
     override fun run(filter: ArgsFilter, response: (Map<String, Any>) -> Unit) {
-
-        val isEnable = provider.isWifiEnabled() // return List<PermissionStatus>
-
-        Timber.d("Wifi: $isEnable")
-
-        response(ResponseHandler.success("Get Wifi status successfully", isEnable))
-
+        try {
+            val isEnable = provider.isWifiEnabled()
+            Timber.d("Wifi: $isEnable")
+            response(ResponseHandler.success("Get Wifi status successfully", isEnable))
+        } catch (e: Exception) {
+            return response(
+                ResponseHandler.error(
+                    "IS_WIFI_ENABLE_FAILED",
+                    e.message ?: "Failed to get Wifi status"
+                )
+            )
+        }
     }
 }

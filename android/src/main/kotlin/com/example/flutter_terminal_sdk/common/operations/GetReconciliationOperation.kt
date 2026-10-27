@@ -3,6 +3,7 @@ package com.example.flutter_terminal_sdk.common.operations
 import com.example.flutter_terminal_sdk.common.NearpayProvider
 import com.example.flutter_terminal_sdk.common.filter.ArgsFilter
 import com.example.flutter_terminal_sdk.common.status.ResponseHandler
+import com.example.flutter_terminal_sdk.common.toJsonMap
 import com.google.gson.Gson
 import io.nearpay.terminalsdk.data.dto.ReconciliationResponse
 import io.nearpay.terminalsdk.listeners.GetReconciliationListener
@@ -28,15 +29,23 @@ class GetReconciliationOperation(provider: NearpayProvider) : BaseOperation(prov
         terminal?.getReconciliation(
             uuid = uuid, getReconciliationListener = object : GetReconciliationListener {
                 override fun onGetReconciliationSuccess(reconciliationResponse: ReconciliationResponse) {
-                    val jsonString = gson.toJson(reconciliationResponse)
-                    val map = gson.fromJson(jsonString, Map::class.java) as Map<*, *>
-                    response(ResponseHandler.success("Get Reconciliation Success", map))
+                    val map = gson.toJsonMap(reconciliationResponse)
+                    if (map == null) {
+                        response(
+                            ResponseHandler.error(
+                                "SERIALIZE_FAILED",
+                                "Failed to serialize reconciliation"
+                            )
+                        )
+                    } else {
+                        response(ResponseHandler.success("Get Reconciliation Success", map))
+                    }
 
                 }
 
                 override fun onGetReconciliationFailure(error: GetReconciliationFailure) {
                     Timber.tag("handleReadCard").d("GetReconciliation failed $error")
-                    response(ResponseHandler.error("Get Reconciliation Failure", error.toString()))
+                    response(ResponseHandler.errorFromFailure("Get Reconciliation Failure", error, "Failed to get reconciliation"))
 
                 }
             })

@@ -1,0 +1,1389 @@
+// swift-interface-format-version: 1.0
+// swift-compiler-version: Apple Swift version 6.1.2 effective-5.10 (swiftlang-6.1.2.1.2 clang-1700.0.13.5)
+// swift-module-flags: -target arm64-apple-ios15.5 -enable-objc-interop -enable-library-evolution -swift-version 5 -enforce-exclusivity=checked -O -enable-experimental-feature DebugDescriptionMacro -enable-bare-slash-regex -module-name TerminalSDK
+// swift-module-flags-ignorable: -no-verify-emitted-module-interface -interface-compiler-version 6.1.2
+import CoreImage.CIFilterBuiltins
+import Combine
+import CoreImage
+import CoreLocation
+import Foundation
+import Swift
+import SwiftUI
+import _Concurrency
+import _StringProcessing
+import _SwiftConcurrencyShims
+public protocol QrVoidListener : AnyObject {
+  func onQrVoidQrCodeGenerated(qrCode: TerminalSDK.GeneratedQRCode)
+  func onQrUiPresented(qrCode: TerminalSDK.GeneratedQRCode)
+  func onUiClosed()
+  func onQrVoidSuccess(status: TerminalSDK.QrStatusResponse)
+  func onQrVoidFailure(message: Swift.String)
+}
+extension TerminalSDK.QrVoidListener {
+  public func onQrVoidQrCodeGenerated(qrCode: TerminalSDK.GeneratedQRCode)
+  public func onQrUiPresented(qrCode: TerminalSDK.GeneratedQRCode)
+  public func onUiClosed()
+  public func onQrVoidSuccess(status: TerminalSDK.QrStatusResponse)
+  public func onQrVoidFailure(message: Swift.String)
+}
+public struct TerminalListQuery : Swift.Codable {
+  public init(pageNumber: Swift.Int? = nil, pageSize: Swift.Int? = nil, nameFilter: Swift.String? = nil)
+  public func encode(to encoder: any Swift.Encoder) throws
+  public init(from decoder: any Swift.Decoder) throws
+}
+extension SwiftUICore.View {
+  @_Concurrency.MainActor @preconcurrency public var pinEntryView: some SwiftUICore.View {
+    get
+  }
+}
+@_Concurrency.MainActor @preconcurrency public struct PINEntryViewModifier : SwiftUICore.ViewModifier {
+  @_Concurrency.MainActor @preconcurrency public func body(content: TerminalSDK.PINEntryViewModifier.Content) -> some SwiftUICore.View
+  
+  public typealias Body = @_opaqueReturnTypeOf("$s11TerminalSDK20PINEntryViewModifierV4body7contentQr7SwiftUI01_dE8_ContentVyACG_tF", 0) __
+}
+@_hasMissingDesignatedInitializers final public class NearpayTerminal : Swift.Identifiable, Foundation.ObservableObject {
+  final public var onDisconnect: TerminalSDK.TerminalDisconnectionNotifier?
+  final public var id: TerminalSDK.TerminalID {
+    get
+  }
+  final public var userID: TerminalSDK.UserID {
+    get
+  }
+  final public var tid: Swift.String? {
+    get
+  }
+  final public var name: Swift.String? {
+    get
+  }
+  final public var isReady: Swift.Bool {
+    get
+  }
+  final public func getConfiguration(handler: TerminalSDK.TerminalConfigurationHandler? = nil)
+  final public func isOperationSupported(_ operation: TerminalSDK.TerminalOperation) -> Swift.Bool
+  final public func purchase(id: TerminalSDK.IntentID, amount: Swift.UInt64, otherAmount: Swift.UInt64? = nil, surchargeAmount: Swift.UInt64? = nil, taxPercentage: Swift.UInt64? = nil, defaultFractionDigits: Swift.UInt8 = 2, scheme: TerminalSDK.PaymentCardScheme? = nil, timestamp: Foundation.TimeInterval? = nil, customerReferenceNumber: Swift.String? = nil, withTokenization: Swift.Bool = false, linkingHandler: TerminalSDK.ReaderLinkingHandler? = nil, readingHandler: TerminalSDK.ReadingHandler? = nil, handler: TerminalSDK.TransactionRequestHandler? = nil)
+  final public func purchaseWithTip(id: TerminalSDK.IntentID, amount: Swift.UInt64, amountOther: Swift.UInt64, surchargeAmount: Swift.UInt64? = nil, taxPercentage: Swift.UInt64? = nil, defaultFractionDigits: Swift.UInt8 = 2, scheme: TerminalSDK.PaymentCardScheme? = nil, timestamp: Foundation.TimeInterval? = nil, customerReferenceNumber: Swift.String? = nil, withTokenization: Swift.Bool = false, linkingHandler: TerminalSDK.ReaderLinkingHandler? = nil, readingHandler: TerminalSDK.ReadingHandler? = nil, handler: TerminalSDK.TransactionRequestHandler? = nil)
+  final public func authorize(id: TerminalSDK.IntentID, amount: Swift.UInt64, surchargeAmount: Swift.UInt64? = nil, taxPercentage: Swift.UInt64? = nil, defaultFractionDigits: Swift.UInt8 = 2, scheme: TerminalSDK.PaymentCardScheme? = nil, timestamp: Foundation.TimeInterval? = nil, customerReferenceNumber: Swift.String? = nil, linkingHandler: TerminalSDK.ReaderLinkingHandler? = nil, readingHandler: TerminalSDK.ReadingHandler? = nil, handler: TerminalSDK.TransactionRequestHandler? = nil)
+  final public func refund(id: TerminalSDK.IntentID, originalIntentID: TerminalSDK.IntentID, refundRRN: Swift.String? = nil, amount: Swift.UInt64, defaultFractionDigits: Swift.UInt8 = 2, scheme: TerminalSDK.PaymentCardScheme? = nil, timestamp: Foundation.TimeInterval? = nil, customerReferenceNumber: Swift.String? = nil, linkingHandler: TerminalSDK.ReaderLinkingHandler? = nil, readingHandler: TerminalSDK.ReadingHandler? = nil, handler: TerminalSDK.TransactionRequestHandler? = nil)
+  final public func openRefund(id: TerminalSDK.IntentID, amount: Swift.UInt64, defaultFractionDigits: Swift.UInt8 = 2, scheme: TerminalSDK.PaymentCardScheme? = nil, timestamp: Foundation.TimeInterval? = nil, customerReferenceNumber: Swift.String? = nil, linkingHandler: TerminalSDK.ReaderLinkingHandler? = nil, readingHandler: TerminalSDK.ReadingHandler? = nil, handler: TerminalSDK.TransactionRequestHandler? = nil)
+  final public func purchaseVoid(originalIntentID: TerminalSDK.IntentID, amount: Swift.UInt64, customerReferenceNumber: Swift.String? = nil, defaultFractionDigits: Swift.UInt8 = 2, scheme: TerminalSDK.PaymentCardScheme? = nil, timestamp: Foundation.TimeInterval? = nil, linkingHandler: TerminalSDK.ReaderLinkingHandler? = nil, readingHandler: TerminalSDK.ReadingHandler? = nil, handler: TerminalSDK.TransactionRequestHandler? = nil)
+  final public func refundVoid(originalIntentID: TerminalSDK.IntentID, amount: Swift.UInt64, customerReferenceNumber: Swift.String? = nil, defaultFractionDigits: Swift.UInt8 = 2, scheme: TerminalSDK.PaymentCardScheme? = nil, timestamp: Foundation.TimeInterval? = nil, linkingHandler: TerminalSDK.ReaderLinkingHandler? = nil, readingHandler: TerminalSDK.ReadingHandler? = nil, handler: TerminalSDK.TransactionRequestHandler? = nil)
+  final public func installments(id: TerminalSDK.IntentID, amount: Swift.UInt64, numberOfInstallments: Swift.Int, customerReferenceNumber: Swift.String? = nil, defaultFractionDigits: Swift.UInt8 = 2, scheme: TerminalSDK.PaymentCardScheme? = nil, timestamp: Foundation.TimeInterval? = nil, linkingHandler: TerminalSDK.ReaderLinkingHandler? = nil, readingHandler: TerminalSDK.ReadingHandler? = nil, handler: TerminalSDK.TransactionRequestHandler? = nil)
+  final public func captureAuthorizationWithTap(id: TerminalSDK.IntentID, originalIntentID: TerminalSDK.IntentID, amount: Swift.UInt64, defaultFractionDigits: Swift.UInt8 = 2, scheme: TerminalSDK.PaymentCardScheme? = nil, timestamp: Foundation.TimeInterval? = nil, customerReferenceNumber: Swift.String? = nil, linkingHandler: TerminalSDK.ReaderLinkingHandler? = nil, readingHandler: TerminalSDK.ReadingHandler? = nil, handler: TerminalSDK.TransactionRequestHandler? = nil)
+  final public func voidAuthorizationWithTap(id: TerminalSDK.IntentID, originalIntentID: TerminalSDK.IntentID, amount: Swift.UInt64, customerReferenceNumber: Swift.String? = nil, defaultFractionDigits: Swift.UInt8 = 2, scheme: TerminalSDK.PaymentCardScheme? = nil, timestamp: Foundation.TimeInterval? = nil, linkingHandler: TerminalSDK.ReaderLinkingHandler? = nil, readingHandler: TerminalSDK.ReadingHandler? = nil, handler: TerminalSDK.TransactionRequestHandler? = nil)
+  final public func refundWithoutTap(id: TerminalSDK.IntentID, originalIntentID: TerminalSDK.IntentID, amount: Swift.UInt64? = nil, customerReferenceNumber: Swift.String? = nil, handler: TerminalSDK.TransactionRequestHandler? = nil)
+  final public func purchaseWithTokenization(id: TerminalSDK.IntentID, tokenizationID: Swift.String, amount: Swift.UInt64, customerReferenceNumber: Swift.String? = nil, surchargeAmount: Swift.UInt64? = nil, taxPercentage: Swift.UInt64? = nil, handler: TerminalSDK.TransactionRequestHandler? = nil)
+  final public func routingLookup(id: TerminalSDK.IntentID, amount: Swift.UInt64, defaultFractionDigits: Swift.UInt8 = 2, scheme: TerminalSDK.PaymentCardScheme? = nil, timestamp: Foundation.TimeInterval? = nil, latitude: Swift.Double? = nil, longitude: Swift.Double? = nil, isLocationFromMock: Swift.Bool? = nil, linkingHandler: TerminalSDK.ReaderLinkingHandler? = nil, readingHandler: TerminalSDK.ReadingHandler? = nil, handler: TerminalSDK.RoutingLookupHandler? = nil)
+  final public func routingExecute(session: TerminalSDK.RoutingSession, selectedAcquirerTerminalId: Swift.String, customerReferenceNumber: Swift.String? = nil, numberOfInstallments: Swift.Int? = nil, readingHandler: TerminalSDK.ReadingHandler? = nil, handler: TerminalSDK.TransactionRequestHandler? = nil)
+  final public func routingInstallments(session: TerminalSDK.RoutingSession, selectedAcquirerTerminalId: Swift.String, installmentOptions: [TerminalSDK.InstallmentOption], customerReferenceNumber: Swift.String? = nil, readingHandler: TerminalSDK.ReadingHandler? = nil, handler: TerminalSDK.TransactionRequestHandler? = nil)
+  final public func getRoutingProfile(handler: TerminalSDK.RoutingProfileHandler? = nil)
+  final public func batchCapture(handler: TerminalSDK.BatchCaptureHandler? = nil)
+  final public func increment(originalIntentID: TerminalSDK.IntentID, amount: Swift.UInt64, handler: TerminalSDK.TransactionRequestHandler? = nil)
+  final public func tip(originalIntentID: TerminalSDK.IntentID, amount: Swift.UInt64, handler: TerminalSDK.TransactionRequestHandler? = nil)
+  final public func capture(originalIntentID: TerminalSDK.IntentID, amount: Swift.UInt64, handler: TerminalSDK.TransactionRequestHandler? = nil)
+  final public func void(originalIntentID: TerminalSDK.IntentID, handler: TerminalSDK.TransactionRequestHandler? = nil)
+  final public func reverse(originalIntentID: TerminalSDK.IntentID, handler: TerminalSDK.TransactionRequestHandler? = nil)
+  final public func reconcile(handler: TerminalSDK.ReconciliationRequestHandler? = nil)
+  final public func getIntentList(query: TerminalSDK.IntentListQuery? = nil, handler: TerminalSDK.IntentListHandler? = nil)
+  final public func getTransactionList(query: TerminalSDK.TransactionListQuery? = nil, handler: TerminalSDK.TransactionListHandler? = nil)
+  final public func getReconciliationList(query: TerminalSDK.ReconciliationListQuery? = nil, handler: TerminalSDK.ReconciliationListHandler? = nil)
+  final public func getInvoiceList(query: TerminalSDK.ListQuery? = nil, handler: TerminalSDK.InvoiceListHandler? = nil)
+  final public func getProductList(query: TerminalSDK.ListQuery? = nil, handler: TerminalSDK.ProductListHandler? = nil)
+  final public func getIntent(with id: TerminalSDK.IntentID, handler: TerminalSDK.IntentQueryHandler? = nil)
+  final public func getTransaction(with id: TerminalSDK.TransactionID, handler: TerminalSDK.TransactionQueryHandler? = nil)
+  final public func getReconciliation(with id: TerminalSDK.ReconciliationID, handler: TerminalSDK.ReconciliationQueryHandler? = nil)
+  final public func getInvoice(with id: TerminalSDK.InvoiceID, handler: TerminalSDK.InvoiceQueryHandler? = nil)
+  final public func getProduct(with id: TerminalSDK.ProductID, handler: TerminalSDK.ProductQueryHandler? = nil)
+  final public func deleteProduct(with id: TerminalSDK.ProductID, handler: TerminalSDK.ProductDeletionHandler? = nil)
+  final public func getPendingTotal(handler: TerminalSDK.PendingTotalHandler? = nil)
+  final public func disconnect(handler: TerminalSDK.TerminalDisconnectionHandler? = nil)
+  final public func dismissReaderUi()
+  final public func cancelReading()
+  final public func cancelTransaction(with intentID: TerminalSDK.IntentID, handler: TerminalSDK.TransactionCancellationHandler? = nil)
+  final public func createInvoice(request: TerminalSDK.InvoiceRequest, handler: TerminalSDK.InvoiceRequestHandler? = nil)
+  final public func createProduct(request: TerminalSDK.ProductRequest, handler: TerminalSDK.ProductRequestHandler? = nil)
+  final public func shareReceipt(of type: TerminalSDK.ReceiptType, method: TerminalSDK.ReceiptShareMethod, handler: TerminalSDK.ReceiptSharingHandler? = nil)
+  final public func generateQrCode(id: TerminalSDK.IntentID, amount: Swift.String, customerReferenceNumber: Swift.String? = nil, latitude: Swift.Double? = nil, longitude: Swift.Double? = nil, isLocationFromMock: Swift.Bool? = nil, handler: TerminalSDK.GenerateQrCodeHandler? = nil)
+  final public func qrStatus(transactionID: Swift.String, intentID: TerminalSDK.IntentID? = nil, handler: TerminalSDK.QrStatusHandler? = nil)
+  final public func qrRefund(intentID: TerminalSDK.IntentID, originalIntentID: TerminalSDK.IntentID, amount: Swift.String? = nil, enableUiDismiss: Swift.Bool = true, listener: (any TerminalSDK.QrRefundListener)? = nil)
+  final public func qrVoid(intentID: TerminalSDK.IntentID, originalIntentID: TerminalSDK.IntentID, latitude: Swift.Double? = nil, longitude: Swift.Double? = nil, isLocationFromMock: Swift.Bool? = nil, enableUiDismiss: Swift.Bool = true, listener: (any TerminalSDK.QrVoidListener)? = nil)
+  final public func generateQrCodeWithUi(id: TerminalSDK.IntentID, amount: Swift.String, customerReferenceNumber: Swift.String? = nil, latitude: Swift.Double? = nil, longitude: Swift.Double? = nil, isLocationFromMock: Swift.Bool? = nil, enableUiDismiss: Swift.Bool = true, listener: (any TerminalSDK.QrPaymentUiListener)? = nil)
+  public typealias ID = TerminalSDK.TerminalID
+  public typealias ObjectWillChangePublisher = Combine.ObservableObjectPublisher
+  @objc deinit
+}
+@frozen public enum TerminalCountry {
+  case sa, us, tr
+  public static func == (a: TerminalSDK.TerminalCountry, b: TerminalSDK.TerminalCountry) -> Swift.Bool
+  public func hash(into hasher: inout Swift.Hasher)
+  public var hashValue: Swift.Int {
+    get
+  }
+}
+@frozen public enum TerminalEnvironment {
+  case production, sandbox, local
+  public static func == (a: TerminalSDK.TerminalEnvironment, b: TerminalSDK.TerminalEnvironment) -> Swift.Bool
+  public func hash(into hasher: inout Swift.Hasher)
+  public var hashValue: Swift.Int {
+    get
+  }
+}
+@frozen public enum TerminalMode {
+  case standard, mock
+  public static func == (a: TerminalSDK.TerminalMode, b: TerminalSDK.TerminalMode) -> Swift.Bool
+  public func hash(into hasher: inout Swift.Hasher)
+  public var hashValue: Swift.Int {
+    get
+  }
+}
+public struct TerminalSDKConfiguration {
+  public let mode: TerminalSDK.TerminalMode
+  public let country: TerminalSDK.TerminalCountry
+  public let environment: TerminalSDK.TerminalEnvironment
+  public init(country: TerminalSDK.TerminalCountry = .us, environment: TerminalSDK.TerminalEnvironment = .sandbox)
+}
+extension TerminalSDK.TerminalSDKConfiguration {
+  public var isMock: Swift.Bool {
+    get
+  }
+}
+extension TerminalSDK.TerminalError {
+  public var displayError: TerminalSDK.DisplayError {
+    get
+  }
+}
+public struct TerminalConfigurationResponse : Swift.Codable {
+  public let terminal: TerminalSDK.TerminalInfo
+  public let merchant: TerminalSDK.MerchantConfiguration
+  public let supportedOperations: [Swift.String : Swift.Bool]?
+  public func encode(to encoder: any Swift.Encoder) throws
+  public init(from decoder: any Swift.Decoder) throws
+}
+public struct TerminalInfo : Swift.Codable {
+  public let id: TerminalSDK.TerminalID
+  public let tid: Swift.String
+  public let name: Swift.String?
+  public let currencyCode: Swift.String?
+  public func encode(to encoder: any Swift.Encoder) throws
+  public init(from decoder: any Swift.Decoder) throws
+}
+public struct MerchantConfigurationFlags : Swift.Codable {
+  public let invoiceMode: Swift.Bool?
+  public let cashDiscount: Swift.Double?
+  public func encode(to encoder: any Swift.Encoder) throws
+  public init(from decoder: any Swift.Decoder) throws
+}
+public struct MerchantConfiguration : Swift.Codable {
+  public let name: TerminalSDK.LocalizationField
+  public let address: TerminalSDK.LocalizationField
+  public let surchargeAmount: Swift.Double?
+  public let taxPercentage: Swift.Double?
+  public let configuration: TerminalSDK.MerchantConfigurationFlags?
+  public func encode(to encoder: any Swift.Encoder) throws
+  public init(from decoder: any Swift.Decoder) throws
+}
+public struct ReconciliationResponse : Swift.Codable {
+  public struct Receipt : Swift.Codable {
+    public func content<R>(type: R.Type) throws -> R? where R : Swift.Decodable, R : Swift.Encodable
+    public func encode(to encoder: any Swift.Encoder) throws
+    public init(from decoder: any Swift.Decoder) throws
+  }
+  public let receipt: TerminalSDK.ReconciliationResponse.Receipt
+  public func encode(to encoder: any Swift.Encoder) throws
+  public init(from decoder: any Swift.Decoder) throws
+}
+public struct ReconciliationReceipt : Swift.Codable, Swift.Identifiable {
+  public let id: Foundation.UUID
+  public let date: Swift.String?
+  public let time: Swift.String?
+  public let startDate: Swift.String?
+  public let startTime: Swift.String?
+  public let endDate: Swift.String?
+  public let endTime: Swift.String?
+  public let merchant: TerminalSDK.Merchant?
+  public let cardAcceptorTerminalID: Swift.String?
+  public let posSoftwareVersionNumber: Swift.String?
+  public let cardSchemeSponsorID: Swift.String?
+  public let isBalanced: TerminalSDK.LabelField<Swift.Bool>?
+  public let details: TerminalSDK.ReconciliationReceipt.ReconciliationDetails?
+  public let schemes: [TerminalSDK.ReconciliationReceipt.Scheme]?
+  public let currency: TerminalSDK.LocalizationField?
+  public let systemTraceAuditNumber: Swift.String?
+  public let merchantID: TerminalSDK.MerchantID?
+  public let deviceID: Foundation.UUID?
+  public let clientID: Foundation.UUID?
+  public let terminal: TerminalSDK.ReconciliationReceipt.Terminal?
+  public let reconciliation: TerminalSDK.ReconciliationReceipt.Reconciliation?
+  public let userID: TerminalSDK.UserID?
+  public let createdAt: Swift.String?
+  public let updatedAt: Swift.String?
+  public let qrCode: Swift.String?
+  public struct Terminal : Swift.Codable {
+    public let id: TerminalSDK.TerminalID
+    public func encode(to encoder: any Swift.Encoder) throws
+    public init(from decoder: any Swift.Decoder) throws
+  }
+  public struct Reconciliation : Swift.Codable {
+    public let id: TerminalSDK.ReconciliationID
+    public func encode(to encoder: any Swift.Encoder) throws
+    public init(from decoder: any Swift.Decoder) throws
+  }
+  public struct ReconciliationDetails : Swift.Codable {
+    public let purchase: TerminalSDK.ReconciliationReceipt.ReconciliationLabelField?
+    public let refund: TerminalSDK.ReconciliationReceipt.ReconciliationLabelField?
+    public let purchaseReversal: TerminalSDK.ReconciliationReceipt.ReconciliationLabelField?
+    public let refundReversal: TerminalSDK.ReconciliationReceipt.ReconciliationLabelField?
+    public let total: TerminalSDK.ReconciliationReceipt.ReconciliationLabelField?
+    public func encode(to encoder: any Swift.Encoder) throws
+    public init(from decoder: any Swift.Decoder) throws
+  }
+  public struct Scheme : Swift.Codable {
+    public let name: TerminalSDK.LabelField<Swift.String>?
+    public let pos: TerminalSDK.ReconciliationReceipt.SchemeDetails?
+    public let host: TerminalSDK.ReconciliationReceipt.SchemeDetails?
+    public let isBalanced: Swift.Bool
+    public func encode(to encoder: any Swift.Encoder) throws
+    public init(from decoder: any Swift.Decoder) throws
+  }
+  public struct SchemeDetails : Swift.Codable {
+    public let debit: TerminalSDK.ReconciliationReceipt.ReconciliationLabelField?
+    public let credit: TerminalSDK.ReconciliationReceipt.ReconciliationLabelField?
+    public let total: TerminalSDK.ReconciliationReceipt.ReconciliationLabelField?
+    public func encode(to encoder: any Swift.Encoder) throws
+    public init(from decoder: any Swift.Decoder) throws
+  }
+  public struct ReconciliationLabelField : Swift.Codable {
+    public let label: TerminalSDK.LocalizationField?
+    public let total: Swift.String?
+    public let count: Swift.Int?
+    public func encode(to encoder: any Swift.Encoder) throws
+    public init(from decoder: any Swift.Decoder) throws
+  }
+  public typealias ID = Foundation.UUID
+  public func encode(to encoder: any Swift.Encoder) throws
+  public init(from decoder: any Swift.Decoder) throws
+}
+public struct TurkeyReconciliationReceipt : Swift.Codable, Swift.Identifiable {
+  public let id: Foundation.UUID
+  public let date: Swift.String
+  public let hour: Swift.String
+  public let bankName: Swift.String
+  public let grandTotal: Swift.String
+  public let documentRef: Swift.String
+  public let businessName: Swift.String
+  public let serialNumber: Swift.String
+  public let businessNumber: Swift.String
+  public let terminalNumber: Swift.String
+  public let businessAddressAndTelephone: Swift.String
+  public let endOfDaySummary: [TerminalSDK.EndOfDaySummary]
+  public typealias ID = Foundation.UUID
+  public func encode(to encoder: any Swift.Encoder) throws
+  public init(from decoder: any Swift.Decoder) throws
+}
+public struct EndOfDaySummary : Swift.Codable, Swift.Identifiable {
+  public let id: Foundation.UUID
+  public let type: Swift.String
+  public let count: Swift.String
+  public let amount: Swift.String
+  public typealias ID = Foundation.UUID
+  public func encode(to encoder: any Swift.Encoder) throws
+  public init(from decoder: any Swift.Decoder) throws
+}
+public struct LabelField<T> : Swift.Codable where T : Swift.Decodable, T : Swift.Encodable {
+  public let label: TerminalSDK.LocalizationField?
+  public let value: T
+  public func encode(to encoder: any Swift.Encoder) throws
+  public init(from decoder: any Swift.Decoder) throws
+}
+public struct Merchant : Swift.Codable {
+  public let id: Swift.String?
+  public let bank: TerminalSDK.Merchant.Bank?
+  public let name: TerminalSDK.LocalizationField?
+  public let address: TerminalSDK.LocalizationField?
+  public let categoryCode: Swift.String?
+  public init(from decoder: any Swift.Decoder) throws
+  public struct Bank : Swift.Codable {
+    public let id: Swift.String?
+    public let name: TerminalSDK.LocalizationField?
+    public func encode(to encoder: any Swift.Encoder) throws
+    public init(from decoder: any Swift.Decoder) throws
+  }
+  public func encode(to encoder: any Swift.Encoder) throws
+}
+public struct PendingTotalResponse : Swift.Codable {
+  public let total: Swift.String
+  public let currency: TerminalSDK.LocalizationField
+  public func encode(to encoder: any Swift.Encoder) throws
+  public init(from decoder: any Swift.Decoder) throws
+}
+public struct IntentListResponse : Swift.Codable {
+  public let intentList: [TerminalSDK.IntentItem]
+  public let pagination: TerminalSDK.Pagination
+  public func encode(to encoder: any Swift.Encoder) throws
+  public init(from decoder: any Swift.Decoder) throws
+}
+public struct TransactionListResponse : Swift.Codable {
+  public let transactionList: [TerminalSDK.TransactionItem]
+  public let pagination: TerminalSDK.Pagination
+  public func encode(to encoder: any Swift.Encoder) throws
+  public init(from decoder: any Swift.Decoder) throws
+}
+public struct TransactionItem : Swift.Codable, Swift.Identifiable, Swift.Equatable {
+  public let id: Foundation.UUID
+  public let scheme: TerminalSDK.CardScheme
+  public let customerReferenceNumber: Swift.String?
+  public let pan: Swift.String?
+  public let amountAuthorized: Swift.String
+  public let transactionType: TerminalSDK.TransactionType
+  public let currency: TerminalSDK.LocalizationField
+  public let isApproved: Swift.Bool
+  public let isReversed: Swift.Bool
+  public let isReconciled: Swift.Bool
+  public let startDate: Swift.String
+  public let startTime: Swift.String
+  public let performance: [TerminalSDK.Performance]
+  public static func == (lhs: TerminalSDK.TransactionItem, rhs: TerminalSDK.TransactionItem) -> Swift.Bool
+  public typealias ID = Foundation.UUID
+  public func encode(to encoder: any Swift.Encoder) throws
+  public init(from decoder: any Swift.Decoder) throws
+}
+public enum TransactionType : Swift.String, Swift.Codable {
+  case undefined
+  case purchase
+  case authorize
+  case cash
+  case cashDisbursement
+  case purchaseWithCashback
+  case refund
+  public var description: Swift.String {
+    get
+  }
+  public init(from decoder: any Swift.Decoder) throws
+  public init?(rawValue: Swift.String)
+  public typealias RawValue = Swift.String
+  public var rawValue: Swift.String {
+    get
+  }
+}
+public enum CardScheme : Swift.String, Swift.Codable {
+  case undefined
+  case mada
+  case visa
+  case mastercard
+  case maestro
+  case americanExpress
+  case gccNet
+  case unionPay
+  case jcb
+  case discover
+  public var description: Swift.String {
+    get
+  }
+  public init?(rawValue: Swift.String)
+  public typealias RawValue = Swift.String
+  public var rawValue: Swift.String {
+    get
+  }
+}
+public struct Performance : Swift.Codable {
+  public let type: Swift.String
+  public let timeStamp: Swift.Int64
+  public func encode(to encoder: any Swift.Encoder) throws
+  public init(from decoder: any Swift.Decoder) throws
+}
+public struct ReconciliationListResponse : Swift.Codable {
+  public let reconciliationList: [TerminalSDK.ReconciliationItem]
+  public let pagination: TerminalSDK.Pagination
+  public func encode(to encoder: any Swift.Encoder) throws
+  public init(from decoder: any Swift.Decoder) throws
+}
+public struct ReconciliationItem : Swift.Codable, Swift.Identifiable, Swift.Equatable {
+  public let id: Foundation.UUID
+  public let date: Swift.String
+  public let time: Swift.String
+  public let startDate: Swift.String
+  public let startTime: Swift.String
+  public let isBalanced: TerminalSDK.LabelField<Swift.Bool>
+  public let total: Swift.String
+  public let currency: TerminalSDK.LocalizationField
+  public static func == (lhs: TerminalSDK.ReconciliationItem, rhs: TerminalSDK.ReconciliationItem) -> Swift.Bool
+  public typealias ID = Foundation.UUID
+  public func encode(to encoder: any Swift.Encoder) throws
+  public init(from decoder: any Swift.Decoder) throws
+}
+public struct IntentQueryResponse : Swift.Codable {
+  public let details: TerminalSDK.TransactionResponse.IntentDetails
+  public func encode(to encoder: any Swift.Encoder) throws
+  public init(from decoder: any Swift.Decoder) throws
+}
+public struct TransactionQueryResponse : Swift.Codable {
+  public let receipts: [TerminalSDK.TransactionQueryResponse.Receipt]
+  public struct Receipt : Swift.Codable {
+    public let id: Foundation.UUID
+    public let type: Swift.String?
+    public let rrn: Swift.String?
+    public let stan: Swift.String?
+    public let status: Swift.String?
+    public let actionCode: Swift.String?
+    public let authCode: Swift.String?
+    public let standard: Swift.String?
+    public let operationType: Swift.String?
+    public let transactionUUID: TerminalSDK.TransactionID?
+    public let intentUUID: TerminalSDK.IntentID?
+    public init(from decoder: any Swift.Decoder) throws
+    public func content<R>(type: R.Type) throws -> R? where R : Swift.Decodable, R : Swift.Encodable
+    public func encode(to encoder: any Swift.Encoder) throws
+  }
+  public func encode(to encoder: any Swift.Encoder) throws
+  public init(from decoder: any Swift.Decoder) throws
+}
+public struct TransactionReceipt : Swift.Codable, Swift.Identifiable {
+  public let id: Foundation.UUID
+  public var type: Swift.String?
+  public var receiptID: Foundation.UUID?
+  public var transactionUUID: TerminalSDK.TransactionID?
+  public var merchant: TerminalSDK.Merchant?
+  public var cardScheme: TerminalSDK.NameField?
+  public var cardSchemeSponsor: Swift.String?
+  public var startDate: Swift.String?
+  public var startTime: Swift.String?
+  public var endDate: Swift.String?
+  public var endTime: Swift.String?
+  public var tid: Swift.String?
+  public var systemTraceAuditNumber: Swift.String?
+  public var posSoftwareVersionNumber: Swift.String?
+  public var retrievalReferenceNumber: Swift.String?
+  public var transactionType: TerminalSDK.NameField?
+  public var isApproved: Swift.Bool?
+  public var isRefunded: Swift.Bool?
+  public var isReversed: Swift.Bool?
+  public var approvalCode: TerminalSDK.LabelField<Swift.String>?
+  public var actionCode: Swift.String?
+  public var statusMessage: TerminalSDK.LocalizationField?
+  public var pan: Swift.String?
+  public var cardExpiration: Swift.String?
+  public var amountAuthorized: TerminalSDK.LabelField<Swift.String>?
+  public var amountOther: TerminalSDK.LabelField<Swift.String>?
+  public var currency: TerminalSDK.LocalizationField?
+  public var verificationMethod: TerminalSDK.LocalizationField?
+  public var receiptLineOne: TerminalSDK.LocalizationField?
+  public var receiptLineTwo: TerminalSDK.LocalizationField?
+  public var thanksMessage: TerminalSDK.LocalizationField?
+  public var saveReceiptMessage: TerminalSDK.LocalizationField?
+  public var entryMode: Swift.String?
+  public var applicationIdentifier: Swift.String?
+  public var terminalVerificationResult: Swift.String?
+  public var transactionStateInformation: Swift.String?
+  public var cardholderVerificationResult: Swift.String?
+  public var cryptogramInformationData: Swift.String?
+  public var applicationCryptogram: Swift.String?
+  public var kernelID: Swift.String?
+  public var paymentAccountReference: Swift.String?
+  public var panSuffix: Swift.String?
+  public var customerReferenceNumber: Swift.String?
+  public var qrCode: Swift.String?
+  public var createdAt: Swift.String?
+  public var updatedAt: Swift.String?
+  public var vasData: Swift.String?
+  public static func dummy(id: Foundation.UUID) -> TerminalSDK.TransactionReceipt
+  public typealias ID = Foundation.UUID
+  public func encode(to encoder: any Swift.Encoder) throws
+  public init(from decoder: any Swift.Decoder) throws
+}
+public struct USTransactionReceipt : Swift.Codable {
+  public let transactionUUID: TerminalSDK.TransactionID?
+  public let supportedLanguages: [Swift.String]
+  public let receiptType: Swift.String
+  public let status: Swift.String
+  public let authCode: Swift.String?
+  public let actionCode: Swift.String?
+  public let amount: Swift.String
+  public let taxPercentage: Swift.String
+  public let totalFees: Swift.String
+  public let tips: Swift.String
+  public let amountAuthorized: TerminalSDK.LabelField<Swift.String>?
+  public let surchargeAmount: Swift.String?
+  public let totalAmount: Swift.String
+  public let currency: TerminalSDK.LocalizationField
+  public let stan: Swift.String?
+  public let rrn: Swift.String?
+  public let tid: Swift.String?
+  public let startAt: Swift.String
+  public let endAt: Swift.String
+  public let version: Swift.String
+  public let token: Swift.String?
+  public let tokenizationID: Swift.String?
+  public let card: TerminalSDK.Card
+  public let merchant: TerminalSDK.Merchant?
+  public let meta: [TerminalSDK.KVP]
+  public let qrCode: Swift.String?
+  public func encode(to encoder: any Swift.Encoder) throws
+  public init(from decoder: any Swift.Decoder) throws
+}
+public struct KVP : Swift.Codable {
+  public let key: Swift.String
+  public let value: Swift.String
+  public func encode(to encoder: any Swift.Encoder) throws
+  public init(from decoder: any Swift.Decoder) throws
+}
+public struct NameField : Swift.Codable {
+  public let name: TerminalSDK.LocalizationField?
+  public let id: Swift.String
+  public init(name: TerminalSDK.LocalizationField?, id: Swift.String)
+  public init(from decoder: any Swift.Decoder) throws
+  public func encode(to encoder: any Swift.Encoder) throws
+}
+public struct TransactionResponse : Swift.Codable {
+  public let details: TerminalSDK.TransactionResponse.IntentDetails
+  public let status: Swift.String
+  public init(from decoder: any Swift.Decoder) throws
+  public struct IntentDetails : Swift.Codable {
+    public let intentID: TerminalSDK.IntentID
+    public let referenceID: Swift.String?
+    public let type: Swift.String?
+    public let status: Swift.String?
+    public let amount: Swift.String?
+    public let pinRequired: Swift.Bool
+    public let createdAt: Swift.String?
+    public let completedAt: Swift.String?
+    public let canceledAt: Swift.String?
+    public let isReconciled: Swift.Bool
+    public let groupReceiptsURL: Swift.String?
+    public let transactions: [TerminalSDK.TransactionDetails]
+    public init(from decoder: any Swift.Decoder) throws
+    public func encode(to encoder: any Swift.Encoder) throws
+  }
+  public func encode(to encoder: any Swift.Encoder) throws
+}
+public struct TransactionDetails : Swift.Codable {
+  public let id: Foundation.UUID
+  public let groupReceiptsURL: Swift.String?
+  public let referenceID: Swift.String?
+  public let orderID: Swift.String?
+  public let amount: Swift.String?
+  public let currency: Swift.String?
+  public let status: TerminalSDK.TransactionStatus
+  public let approvalCode: Swift.String?
+  public let createdAt: Swift.String?
+  public let completedAt: Swift.String?
+  public let pinRequired: Swift.Bool
+  public let attempts: Swift.Int?
+  public let card: TerminalSDK.Card?
+  public let events: [TerminalSDK.TransactionEvent]
+  public init(from decoder: any Swift.Decoder) throws
+  public func encode(to encoder: any Swift.Encoder) throws
+}
+public struct Card : Swift.Codable {
+  public let exp: Swift.String?
+  public let pan: Swift.String?
+  public let brandCode: Swift.String?
+  public let panSuffix: Swift.String?
+  public func encode(to encoder: any Swift.Encoder) throws
+  public init(from decoder: any Swift.Decoder) throws
+}
+public struct TransactionEvent : Swift.Codable {
+  public struct Receipt : Swift.Codable {
+    public enum ReceiptType : Swift.String, Swift.Codable {
+      case mada
+      case meps
+      public init?(rawValue: Swift.String)
+      public typealias RawValue = Swift.String
+      public var rawValue: Swift.String {
+        get
+      }
+    }
+    public let id: Foundation.UUID?
+    public let type: TerminalSDK.TransactionEvent.Receipt.ReceiptType?
+    public init(from decoder: any Swift.Decoder) throws
+    public func content<R>(type: R.Type) throws -> R? where R : Swift.Decodable, R : Swift.Encodable
+    public func encode(to encoder: any Swift.Encoder) throws
+  }
+  public let stan: Swift.String?
+  public let rrn: Swift.String?
+  public let type: Swift.String?
+  public let status: TerminalSDK.TransactionStatus
+  public let receipt: TerminalSDK.TransactionEvent.Receipt?
+  public init(from decoder: any Swift.Decoder) throws
+  public func encode(to encoder: any Swift.Encoder) throws
+}
+public enum TransactionStatus : Swift.String, Swift.Codable {
+  case approved
+  case declined
+  case pending
+  case unknown
+  public init(from decoder: any Swift.Decoder) throws
+  public init?(rawValue: Swift.String)
+  public typealias RawValue = Swift.String
+  public var rawValue: Swift.String {
+    get
+  }
+}
+public struct IntentItem : Swift.Codable {
+  public let customerReferenceNumber: Swift.String?
+  public let terminalID: TerminalSDK.TerminalID?
+  public let amount: Swift.String?
+  public let id: TerminalSDK.IntentID
+  public let originalIntentID: TerminalSDK.IntentID?
+  public let status: Swift.String?
+  public let type: Swift.String
+  public let createdAt: Swift.String?
+  public let completedAt: Swift.String?
+  public let cancelledAt: Swift.String?
+  public let transactions: [TerminalSDK.IntentDetails]?
+  public init(from decoder: any Swift.Decoder) throws
+  public func encode(to encoder: any Swift.Encoder) throws
+}
+public struct IntentCurrency : Swift.Codable {
+  public let code: Swift.String?
+  public let decimals: Swift.Int?
+  public let name: Swift.String?
+  public let number: Swift.String?
+  public init(from decoder: any Swift.Decoder) throws
+  public func encode(to encoder: any Swift.Encoder) throws
+}
+public struct IntentDetails : Swift.Codable, Swift.Identifiable, Swift.Equatable {
+  public let id: Foundation.UUID
+  public let pan: Swift.String?
+  public let scheme: TerminalSDK.LocalizationField
+  public let amountAuthorized: Swift.String
+  public let currency: TerminalSDK.IntentCurrency?
+  public let transactionType: TerminalSDK.LocalizationField
+  public let isApproved: Swift.Bool
+  public let isReversed: Swift.Bool
+  public let isReconciled: Swift.Bool
+  public let retrievalReferenceNumber: Swift.String?
+  public let customerReferenceNumber: Swift.String?
+  public init(from decoder: any Swift.Decoder) throws
+  public static func == (lhs: TerminalSDK.IntentDetails, rhs: TerminalSDK.IntentDetails) -> Swift.Bool
+  public typealias ID = Foundation.UUID
+  public func encode(to encoder: any Swift.Encoder) throws
+}
+public struct InvoiceResponse : Swift.Codable {
+  public let id: TerminalSDK.InvoiceID
+  public let subTotal: Swift.Double
+  public let vat: Swift.Double
+  public let vatPercentage: Swift.Double?
+  public let netTotal: Swift.Double
+  public let discount: Swift.Double
+  public let discountPercentage: Swift.Double
+  public let totalPaid: Swift.Double
+  public let invoiceNumber: Swift.Int
+  public let merchantName: Swift.String
+  public let merchantAddress: Swift.String
+  public let mcc: Swift.String
+  public let merchantPhoneNumber: Swift.String
+  public let tid: Swift.String
+  public let items: [TerminalSDK.InvoiceItem]
+  public let payments: [TerminalSDK.InvoicePayment]
+  public let createdAt: Swift.String
+  public let updatedAt: Swift.String
+  public func encode(to encoder: any Swift.Encoder) throws
+  public init(from decoder: any Swift.Decoder) throws
+}
+public struct InvoiceListResponse : Swift.Codable {
+  public let pagination: TerminalSDK.Pagination
+  public let invoiceList: [TerminalSDK.InvoiceDetails]
+  public func encode(to encoder: any Swift.Encoder) throws
+  public init(from decoder: any Swift.Decoder) throws
+}
+public struct InvoiceDetails : Swift.Codable {
+  public let id: TerminalSDK.InvoiceID
+  public let merchantID: TerminalSDK.MerchantID?
+  public let terminalID: TerminalSDK.TerminalID?
+  public let subTotal: Swift.Double
+  public let vat: Swift.Double
+  public let vatAmount: Swift.Double?
+  public let itemsCount: Swift.Int?
+  public let total: Swift.Double?
+  public let netTotal: Swift.Double
+  public let items: [TerminalSDK.InvoiceItem]?
+  public let payments: [TerminalSDK.InvoicePayment]?
+  public func encode(to encoder: any Swift.Encoder) throws
+  public init(from decoder: any Swift.Decoder) throws
+}
+public struct InvoicePayment : Swift.Codable {
+  public let id: TerminalSDK.InvoiceID?
+  public let amount: Swift.Double
+  public let paymentType: TerminalSDK.PaymentType
+  public let createdAt: Swift.String?
+  public func encode(to encoder: any Swift.Encoder) throws
+  public init(from decoder: any Swift.Decoder) throws
+}
+public struct ProductListResponse : Swift.Codable {
+  public let pagination: TerminalSDK.Pagination
+  public let productList: [TerminalSDK.ProductDetails]
+  public func encode(to encoder: any Swift.Encoder) throws
+  public init(from decoder: any Swift.Decoder) throws
+}
+public struct ProductDetails : Swift.Codable {
+  public let id: TerminalSDK.ProductID
+  public let name: Swift.String
+  public let description: Swift.String
+  public let imageLink: Swift.String?
+  public let price: Swift.String
+  public let type: Swift.String
+  public let isVATExcluded: Swift.Bool
+  public func encode(to encoder: any Swift.Encoder) throws
+  public init(from decoder: any Swift.Decoder) throws
+}
+@_Concurrency.MainActor @preconcurrency public struct PINEntryView : SwiftUICore.View {
+  @_Concurrency.MainActor @preconcurrency public var body: some SwiftUICore.View {
+    get
+  }
+  public typealias Body = @_opaqueReturnTypeOf("$s11TerminalSDK12PINEntryViewV4bodyQrvp", 0) __
+}
+public typealias LoginHandler = (TerminalSDK.LoginResult) -> Swift.Void
+public typealias LogoutHandler = TerminalSDK.RequestSuccessHandler
+public typealias OTPSendingHandler = TerminalSDK.RequestSuccessHandler
+public typealias LoginResult = Swift.Result<TerminalSDK.AuthenticationObjects, TerminalSDK.TerminalError>
+public typealias VerificationHandler = (TerminalSDK.VerificationResult) -> Swift.Void
+public typealias VerificationResult = Swift.Result<TerminalSDK.NearpayUser, TerminalSDK.TerminalError>
+public typealias RequestSuccessHandler = (TerminalSDK.SuccessResult) -> Swift.Void
+public typealias SuccessResult = Swift.Result<Swift.Void, TerminalSDK.TerminalError>
+public struct GeneratedQRCode : Swift.Codable {
+  public let qrCode: Swift.String
+  public let transactionID: Swift.String
+  public let amount: Swift.String
+  public func encode(to encoder: any Swift.Encoder) throws
+  public init(from decoder: any Swift.Decoder) throws
+}
+public struct QrStatusResponse : Swift.Codable {
+  public let id: Swift.String?
+  public let statusRaw: Swift.String
+  public let message: Swift.String?
+  public let authCode: Swift.String?
+  public let actionCode: Swift.String?
+  public let rrn: Swift.String?
+  public let stan: Swift.String?
+  public let amount: Swift.String?
+  public let receipt: TerminalSDK.QrStatusResponse.Receipt?
+  public let qrCode: Swift.String?
+  public let transactionID: Swift.String?
+  public var status: TerminalSDK.QrPaymentStatus? {
+    get
+  }
+  public struct Receipt : Swift.Codable {
+    public let id: Swift.String?
+    public let standard: Swift.String
+    public let data: Swift.String
+    public func encode(to encoder: any Swift.Encoder) throws
+    public init(from decoder: any Swift.Decoder) throws
+  }
+  public func encode(to encoder: any Swift.Encoder) throws
+  public init(from decoder: any Swift.Decoder) throws
+}
+public enum QrPaymentStatus {
+  case enquiring
+  case processing
+  case completed
+  case failed
+  case expired
+  public static func == (a: TerminalSDK.QrPaymentStatus, b: TerminalSDK.QrPaymentStatus) -> Swift.Bool
+  public func hash(into hasher: inout Swift.Hasher)
+  public var hashValue: Swift.Int {
+    get
+  }
+}
+@frozen public enum AppleReadingEvent {
+  case notReady
+  case readyForTap
+  case cardDetected
+  case removeCard
+  case readCompleted
+  case readRetry
+  case readCancelled
+  case readNotCompleted
+  case pinEntryRequested
+  case pinEntryCompleted
+  @available(iOS 16.4, *)
+  case userInterfaceDismissed
+  public var isActive: Swift.Bool {
+    get
+  }
+  public var code: Swift.String {
+    get
+  }
+  public var messageError: TerminalSDK.TerminalMessageError? {
+    get
+  }
+  public static func == (a: TerminalSDK.AppleReadingEvent, b: TerminalSDK.AppleReadingEvent) -> Swift.Bool
+  public func hash(into hasher: inout Swift.Hasher)
+  public var hashValue: Swift.Int {
+    get
+  }
+}
+extension SwiftUICore.View {
+  @_Concurrency.MainActor @preconcurrency public var qrPaymentView: some SwiftUICore.View {
+    get
+  }
+}
+@_Concurrency.MainActor @preconcurrency public struct QrPaymentViewModifier : SwiftUICore.ViewModifier {
+  @_Concurrency.MainActor @preconcurrency public func body(content: TerminalSDK.QrPaymentViewModifier.Content) -> some SwiftUICore.View
+  
+  public typealias Body = @_opaqueReturnTypeOf("$s11TerminalSDK21QrPaymentViewModifierV4body7contentQr7SwiftUI01_eF8_ContentVyACG_tF", 0) __
+}
+@_Concurrency.MainActor @preconcurrency public struct QrPaymentView : SwiftUICore.View {
+  @_Concurrency.MainActor @preconcurrency public var body: some SwiftUICore.View {
+    get
+  }
+  public typealias Body = @_opaqueReturnTypeOf("$s11TerminalSDK13QrPaymentViewV4bodyQrvp", 0) __
+}
+public struct LocalizationField : Swift.Codable {
+  public let arabic: Swift.String
+  public let english: Swift.String
+  public init(arabic: Swift.String = "", english: Swift.String = "")
+  public init(from decoder: any Swift.Decoder) throws
+  public func encode(to encoder: any Swift.Encoder) throws
+}
+public protocol QrRefundListener : AnyObject {
+  func onQrRefundQrCodeGenerated(qrCode: TerminalSDK.GeneratedQRCode)
+  func onQrUiPresented(qrCode: TerminalSDK.GeneratedQRCode)
+  func onUiClosed()
+  func onQrRefundSuccess(status: TerminalSDK.QrStatusResponse)
+  func onQrRefundFailure(message: Swift.String)
+}
+extension TerminalSDK.QrRefundListener {
+  public func onQrRefundQrCodeGenerated(qrCode: TerminalSDK.GeneratedQRCode)
+  public func onQrUiPresented(qrCode: TerminalSDK.GeneratedQRCode)
+  public func onUiClosed()
+  public func onQrRefundSuccess(status: TerminalSDK.QrStatusResponse)
+  public func onQrRefundFailure(message: Swift.String)
+}
+public enum ReadingState {
+  case nearpay(TerminalSDK.NearpayReadingState)
+  case apple(TerminalSDK.AppleReadingState)
+  public var isReading: Swift.Bool {
+    get
+  }
+}
+public enum AppleReadingState {
+  case event(TerminalSDK.AppleReadingEvent?)
+  case relinking
+  case readingCompleted
+}
+public enum NearpayReadingState {
+  case waiting
+  case reading
+  case pinRequested(TerminalSDK.PINEntryView)
+  case readingCompleted
+  case cancelled
+}
+@frozen public enum LinkingState {
+  case nearpay(TerminalSDK.NearpayLinkingState)
+  case apple(TerminalSDK.AppleLinkingState)
+}
+public enum AppleLinkingState {
+  case preparingToLink
+  case linkingStarted
+  case linkingProgress(Swift.Int)
+  case linkingCompleted
+}
+public enum NearpayLinkingState {
+  case preparingToLink
+  case linkingStarted
+  case linkingCompleted
+  public static func == (a: TerminalSDK.NearpayLinkingState, b: TerminalSDK.NearpayLinkingState) -> Swift.Bool
+  public func hash(into hasher: inout Swift.Hasher)
+  public var hashValue: Swift.Int {
+    get
+  }
+}
+public struct TerminalMessageError : Swift.Sendable {
+  public let codeText: Swift.String
+  public let code: Swift.Int
+  public let statusCode: Swift.Int
+  public let terminalPausedSeconds: Swift.Int
+  public let error: TerminalSDK.LocalizedString
+  public let solution: TerminalSDK.LocalizedString
+  public let level: TerminalSDK.MessageErrorLevel
+  public let source: TerminalSDK.MessageErrorSource
+}
+public enum MessageErrorLevel : Swift.String, Swift.Sendable {
+  case high
+  case medium
+  case low
+  public init?(rawValue: Swift.String)
+  public typealias RawValue = Swift.String
+  public var rawValue: Swift.String {
+    get
+  }
+}
+public struct MessageErrorSource : Swift.Sendable {
+  public let arabic: Swift.String
+  public let english: Swift.String
+  public let color: Swift.String
+  public static let nearpay: TerminalSDK.MessageErrorSource
+  public static let user: TerminalSDK.MessageErrorSource
+  public static let device: TerminalSDK.MessageErrorSource
+}
+public typealias TerminalRequestHandler<T> = (TerminalSDK.TerminalRequestResult<T>) -> Swift.Void where T : Swift.Decodable, T : Swift.Encodable
+public typealias TerminalRequestResult<T> = Swift.Result<T, TerminalSDK.TerminalError> where T : Swift.Decodable, T : Swift.Encodable
+public enum TerminalOperation : Swift.String, Swift.CaseIterable {
+  case purchase
+  case purchaseWithTip
+  case purchaseWithTokenization
+  case purchaseVoid
+  case installments
+  case authorize
+  case refund
+  case refundWithoutTap
+  case refundVoid
+  case openRefund
+  case captureAuthorizationWithTap
+  case voidAuthorizationWithTap
+  case increment
+  case tip
+  case capture
+  case void
+  case reverse
+  case reconcile
+  case batchCapture
+  case cancelTransaction
+  case routingLookup
+  case routingExecute
+  case routingInstallments
+  case generateQrCode
+  case qrStatus
+  case qrRefund
+  case qrVoid
+  public init?(rawValue: Swift.String)
+  public typealias AllCases = [TerminalSDK.TerminalOperation]
+  public typealias RawValue = Swift.String
+  nonisolated public static var allCases: [TerminalSDK.TerminalOperation] {
+    get
+  }
+  public var rawValue: Swift.String {
+    get
+  }
+}
+public struct AppleTerminalLoginPayload : Swift.Codable {
+  public func encode(to encoder: any Swift.Encoder) throws
+  public init(from decoder: any Swift.Decoder) throws
+}
+public struct TransactionListQuery : Swift.Codable {
+  public init(pageNumber: Swift.Int? = nil, pageSize: Swift.Int? = nil, startDate: Foundation.TimeInterval? = nil, endDate: Foundation.TimeInterval? = nil, date: Foundation.TimeInterval? = nil, status: Swift.String? = nil, isReconciled: Swift.Bool? = nil, customerReferenceNumber: Swift.String? = nil)
+  public func encode(to encoder: any Swift.Encoder) throws
+  public init(from decoder: any Swift.Decoder) throws
+}
+public struct ReconciliationListQuery : Swift.Codable {
+  public init(pageNumber: Swift.Int?, pageSize: Swift.Int?, startDate: Foundation.TimeInterval? = nil, endDate: Foundation.TimeInterval? = nil)
+  public func encode(to encoder: any Swift.Encoder) throws
+  public init(from decoder: any Swift.Decoder) throws
+}
+public struct ListQuery : Swift.Codable {
+  public init(pageNumber: Swift.String? = nil, pageSize: Swift.String? = nil)
+  public func encode(to encoder: any Swift.Encoder) throws
+  public init(from decoder: any Swift.Decoder) throws
+}
+public struct InvoiceRequest : Swift.Codable {
+  public init(items: [TerminalSDK.InvoiceItem], vatPercentage: Swift.Double, type: TerminalSDK.PaymentType, paidAmount: Swift.Double? = nil, discountPercentage: Swift.Double? = nil, discount: Swift.Double? = nil)
+  public let items: [TerminalSDK.InvoiceItem]
+  public let vatPercentage: Swift.Double
+  public let type: TerminalSDK.PaymentType
+  public let paidAmount: Swift.Double?
+  public let discountPercentage: Swift.Double?
+  public let discount: Swift.Double?
+  public func encode(to encoder: any Swift.Encoder) throws
+  public init(from decoder: any Swift.Decoder) throws
+}
+public struct InvoiceItem : Swift.Codable {
+  public init(name: Swift.String, unitPrice: Swift.Double, quantity: Swift.Int, vat: Swift.Double = 0)
+  public var id: TerminalSDK.InvoiceID?
+  public let name: Swift.String
+  public let unitPrice: Swift.Double
+  public let quantity: Swift.Int
+  public let totalPrice: Swift.Double
+  public let vat: Swift.Double
+  public let netTotal: Swift.Double
+  public func encode(to encoder: any Swift.Encoder) throws
+  public init(from decoder: any Swift.Decoder) throws
+}
+public enum PaymentType : Swift.String, Swift.Codable {
+  case cash
+  case card
+  public init?(rawValue: Swift.String)
+  public typealias RawValue = Swift.String
+  public var rawValue: Swift.String {
+    get
+  }
+}
+public struct ProductRequest : Swift.Codable {
+  public init(name: Swift.String, description: Swift.String, price: Swift.Double, isVATExcluded: Swift.Bool = false)
+  public let name: Swift.String
+  public let description: Swift.String
+  public let price: Swift.Double
+  public let isVATExcluded: Swift.Bool
+  public func encode(to encoder: any Swift.Encoder) throws
+  public init(from decoder: any Swift.Decoder) throws
+}
+public struct ReceiptShareRequest : Swift.Codable {
+  public func encode(to encoder: any Swift.Encoder) throws
+  public init(from decoder: any Swift.Decoder) throws
+}
+public enum ReceiptType {
+  case transaction(TerminalSDK.TransactionID), invoice(TerminalSDK.InvoiceID)
+}
+public enum ReceiptShareMethod {
+  case mobile(Swift.String), email(Swift.String)
+}
+public enum PaymentCardScheme : Swift.String, Swift.Codable, Swift.CaseIterable {
+  case undefined
+  case mada
+  case visa
+  case mastercard
+  case maestro
+  case americanExpress
+  case gccNet
+  case unionPay
+  case jcb
+  case discover
+  case nearpay
+  public init?(rawValue: Swift.String)
+  public typealias AllCases = [TerminalSDK.PaymentCardScheme]
+  public typealias RawValue = Swift.String
+  nonisolated public static var allCases: [TerminalSDK.PaymentCardScheme] {
+    get
+  }
+  public var rawValue: Swift.String {
+    get
+  }
+}
+public typealias UserID = Foundation.UUID
+public typealias LogoutNotifier = (TerminalSDK.UserID) -> Swift.Void
+public typealias TerminalListRequestHandler = (TerminalSDK.TerminalListResult) -> Swift.Void
+public typealias TerminalListResult = Swift.Result<TerminalSDK.TerminalListResponse, TerminalSDK.TerminalError>
+public struct AuthenticationObjects {
+  public let user: TerminalSDK.NearpayUser?
+  public let terminal: TerminalSDK.NearpayTerminal?
+  public let authenticator: TerminalSDK.Authenticator?
+  public init(user: TerminalSDK.NearpayUser? = nil, terminal: TerminalSDK.NearpayTerminal? = nil, authenticator: TerminalSDK.Authenticator? = nil)
+}
+public typealias TerminalID = Foundation.UUID
+public typealias IntentID = Foundation.UUID
+public typealias TransactionID = Foundation.UUID
+public typealias ReconciliationID = Foundation.UUID
+public typealias InvoiceID = Foundation.UUID
+public typealias ProductID = Foundation.UUID
+public typealias MerchantID = Foundation.UUID
+public typealias TerminalDisconnectionNotifier = (TerminalSDK.TerminalID) -> Swift.Void
+public typealias TerminalConnectionHandler = (TerminalSDK.TerminalConnectionResult) -> Swift.Void
+public typealias TerminalConnectionResult = Swift.Result<TerminalSDK.NearpayTerminal, TerminalSDK.TerminalError>
+public typealias TerminalDisconnectionHandler = TerminalSDK.RequestSuccessHandler
+public typealias TerminalConfigurationHandler = TerminalSDK.TerminalRequestHandler<TerminalSDK.TerminalConfigurationResponse>
+public typealias ReconciliationRequestHandler = TerminalSDK.TerminalRequestHandler<TerminalSDK.ReconciliationResponse>
+public typealias TransactionRequestHandler = (TerminalSDK.TransactionRequestResult) -> Swift.Void
+public typealias TransactionRequestResult = TerminalSDK.TerminalRequestResult<TerminalSDK.TransactionResponse>
+public typealias TransactionCancellationHandler = (TerminalSDK.TransactionCancellationResult) -> Swift.Void
+public typealias TransactionCancellationResult = Swift.Result<Swift.Void, TerminalSDK.TerminalError>
+public typealias RoutingLookupHandler = (Swift.Result<TerminalSDK.RoutingLookupSuccess, TerminalSDK.TerminalError>) -> Swift.Void
+public typealias RoutingProfileHandler = TerminalSDK.TerminalRequestHandler<TerminalSDK.RoutingProfile>
+public typealias BatchCaptureHandler = TerminalSDK.TerminalRequestHandler<TerminalSDK.BatchCaptureResponse>
+public typealias GenerateQrCodeHandler = TerminalSDK.TerminalRequestHandler<TerminalSDK.GeneratedQRCode>
+public typealias QrStatusHandler = TerminalSDK.TerminalRequestHandler<TerminalSDK.QrStatusResponse>
+public typealias IntentListHandler = TerminalSDK.TerminalRequestHandler<TerminalSDK.IntentListResponse>
+public typealias TransactionListHandler = TerminalSDK.TerminalRequestHandler<TerminalSDK.TransactionListResponse>
+public typealias ReconciliationListHandler = TerminalSDK.TerminalRequestHandler<TerminalSDK.ReconciliationListResponse>
+public typealias InvoiceListHandler = TerminalSDK.TerminalRequestHandler<TerminalSDK.InvoiceListResponse>
+public typealias ProductListHandler = TerminalSDK.TerminalRequestHandler<TerminalSDK.ProductListResponse>
+public typealias IntentQueryHandler = TerminalSDK.TerminalRequestHandler<TerminalSDK.IntentQueryResponse>
+public typealias TransactionQueryHandler = TerminalSDK.TerminalRequestHandler<TerminalSDK.TransactionQueryResponse>
+public typealias ReconciliationQueryHandler = TerminalSDK.TerminalRequestHandler<TerminalSDK.ReconciliationReceipt>
+public typealias PendingTotalHandler = TerminalSDK.TerminalRequestHandler<TerminalSDK.PendingTotalResponse>
+public typealias InvoiceQueryHandler = TerminalSDK.TerminalRequestHandler<TerminalSDK.InvoiceDetails>
+public typealias ProductQueryHandler = TerminalSDK.TerminalRequestHandler<TerminalSDK.ProductDetails>
+public typealias InvoiceRequestHandler = TerminalSDK.TerminalRequestHandler<TerminalSDK.InvoiceResponse>
+public typealias ProductRequestHandler = TerminalSDK.TerminalRequestHandler<TerminalSDK.ProductDetails>
+public typealias ProductDeletionHandler = TerminalSDK.RequestSuccessHandler
+public typealias ReceiptSharingHandler = TerminalSDK.RequestSuccessHandler
+public typealias ReadingHandler = (TerminalSDK.ReadingResult) -> Swift.Void
+public typealias ReadingResult = Swift.Result<TerminalSDK.ReadingState, TerminalSDK.ReaderError>
+public typealias ReaderLinkingHandler = (TerminalSDK.ReaderLinkingResult) -> Swift.Void
+public typealias ReaderLinkingResult = Swift.Result<TerminalSDK.LinkingState, TerminalSDK.ReaderError>
+public typealias IntentListQuery = TerminalSDK.TransactionListQuery
+public struct TerminalListResponse : Swift.Codable {
+  public let terminalList: [TerminalSDK.UserTerminal]
+  public let pagination: TerminalSDK.Pagination
+  public func encode(to encoder: any Swift.Encoder) throws
+  public init(from decoder: any Swift.Decoder) throws
+}
+public struct Pagination : Swift.Codable {
+  public let totalPages: Swift.Int?
+  public let currentPage: Swift.Int?
+  public let totalData: Swift.Int?
+  public func encode(to encoder: any Swift.Encoder) throws
+  public init(from decoder: any Swift.Decoder) throws
+}
+public struct UserTerminal : Swift.Codable, Swift.Identifiable, Swift.Equatable {
+  public let name: Swift.String?
+  public let tid: Swift.String
+  public let id: TerminalSDK.TerminalID
+  public let osType: Swift.String
+  public let busy: Swift.Bool
+  public let mode: Swift.String?
+  public let isLocked: Swift.Bool
+  public let hasProfile: Swift.Bool
+  public let merchant: TerminalSDK.TerminalMerchant?
+  public static func == (lhs: TerminalSDK.UserTerminal, rhs: TerminalSDK.UserTerminal) -> Swift.Bool
+  public typealias ID = TerminalSDK.TerminalID
+  public func encode(to encoder: any Swift.Encoder) throws
+  public init(from decoder: any Swift.Decoder) throws
+}
+public struct TerminalMerchant : Swift.Codable {
+  public let id: Swift.String
+  public let name: TerminalSDK.LocalizationField
+  public let createdAt: Swift.String?
+  public func encode(to encoder: any Swift.Encoder) throws
+  public init(from decoder: any Swift.Decoder) throws
+}
+public protocol QrPaymentUiListener : AnyObject {
+  func onQrUiPresented(qrCode: TerminalSDK.GeneratedQRCode)
+  func onUiClosed()
+  func onQrPaymentFailure(message: Swift.String)
+  func onQrPaymentStatusUpdated(status: TerminalSDK.QrStatusResponse)
+  func onQrPaymentStatusCompleted(status: TerminalSDK.QrStatusResponse)
+  func onQrPaymentStatusFailed(status: TerminalSDK.QrStatusResponse)
+  func onQrPaymentStatusExpired(status: TerminalSDK.QrStatusResponse)
+  func onQrPaymentStatusCancelled(status: TerminalSDK.QrStatusResponse)
+}
+extension TerminalSDK.QrPaymentUiListener {
+  public func onQrUiPresented(qrCode: TerminalSDK.GeneratedQRCode)
+  public func onUiClosed()
+  public func onQrPaymentFailure(message: Swift.String)
+  public func onQrPaymentStatusUpdated(status: TerminalSDK.QrStatusResponse)
+  public func onQrPaymentStatusCompleted(status: TerminalSDK.QrStatusResponse)
+  public func onQrPaymentStatusFailed(status: TerminalSDK.QrStatusResponse)
+  public func onQrPaymentStatusExpired(status: TerminalSDK.QrStatusResponse)
+  public func onQrPaymentStatusCancelled(status: TerminalSDK.QrStatusResponse)
+}
+public enum TerminalError : Swift.Error {
+  case invalidRequest(TerminalSDK.InvalidError)
+  case provisioningFailure(TerminalSDK.ReaderError)
+  case linkingFailure(TerminalSDK.ReaderError)
+  case networkFailure(TerminalSDK.TerminalNetworkError)
+}
+public enum InvalidError : Swift.Error {
+  case missingDependencyObject
+  case terminalDisconnected
+  case userLoggedOut
+  case userNotFound
+  case unsupportedOperation
+  case invalidAmount
+  case invalidParameter
+  case invalidInstallmentsCount
+  case invalidTipAmount
+  case transactionAlreadyInProgress
+  case routingSessionExpired
+  case notFound
+  case locationPermissionDenied
+  public static func == (a: TerminalSDK.InvalidError, b: TerminalSDK.InvalidError) -> Swift.Bool
+  public func hash(into hasher: inout Swift.Hasher)
+  public var hashValue: Swift.Int {
+    get
+  }
+}
+extension TerminalSDK.TerminalError {
+  public var description: Swift.String {
+    get
+  }
+  public var messageError: TerminalSDK.TerminalMessageError {
+    get
+  }
+}
+public struct ReaderError : Swift.Error, Swift.Sendable {
+  public var displayError: TerminalSDK.DisplayError {
+    get
+  }
+  public var messageError: TerminalSDK.TerminalMessageError {
+    get
+  }
+}
+public struct TerminalNetworkError : Swift.Error, Swift.Sendable {
+  public var displayError: TerminalSDK.DisplayError {
+    get
+  }
+  public var messageError: TerminalSDK.TerminalMessageError {
+    get
+  }
+}
+@_hasMissingDesignatedInitializers final public class Authenticator : Foundation.ObservableObject {
+  final public func verify(otp: Swift.String, handler: TerminalSDK.VerificationHandler? = nil)
+  final public func sendOTP(handler: TerminalSDK.OTPSendingHandler? = nil)
+  public typealias ObjectWillChangePublisher = Combine.ObservableObjectPublisher
+  @objc deinit
+}
+public enum LoginMethod {
+  case mobile(Swift.String)
+  case email(Swift.String)
+  case jwt(Swift.String)
+}
+public enum AuthenticationMethod {
+  case mobile(Swift.String)
+  case email(Swift.String)
+}
+public struct RoutingBin : Swift.Codable {
+  public let bin: Swift.String?
+  public let issuerId: Swift.String?
+  public let brand: Swift.String?
+  public let cardType: Swift.String?
+  public func encode(to encoder: any Swift.Encoder) throws
+  public init(from decoder: any Swift.Decoder) throws
+}
+public struct RoutingResponse : Swift.Codable {
+  public let binInformation: TerminalSDK.RoutingBin?
+  public func encode(to encoder: any Swift.Encoder) throws
+  public init(from decoder: any Swift.Decoder) throws
+}
+public struct RoutingLookupSuccess {
+  public let response: TerminalSDK.RoutingResponse
+  public let session: TerminalSDK.RoutingSession
+}
+public struct InstallmentOption : Swift.Codable, Swift.Equatable {
+  public let installmentCount: Swift.Int
+  public let installmentPercentage: Swift.Double
+  public let paymentPlan: Swift.String
+  public let totalCalculatedAmount: Swift.Double
+  public init(installmentCount: Swift.Int, installmentPercentage: Swift.Double, paymentPlan: Swift.String, totalCalculatedAmount: Swift.Double)
+  public static func == (a: TerminalSDK.InstallmentOption, b: TerminalSDK.InstallmentOption) -> Swift.Bool
+  public func encode(to encoder: any Swift.Encoder) throws
+  public init(from decoder: any Swift.Decoder) throws
+}
+public struct RoutingProfileTerminalInfo : Swift.Codable {
+  public let bankName: Swift.String?
+  public let acquirerId: Swift.String?
+  public let acquirerTerminalId: Swift.String
+  public let virtualSerialNumber: Swift.String?
+  public func encode(to encoder: any Swift.Encoder) throws
+  public init(from decoder: any Swift.Decoder) throws
+}
+public struct RoutingProfileMerchantData : Swift.Codable {
+  public let businessName: Swift.String?
+  public let taxOfficeName: Swift.String?
+  public let businessAddress: Swift.String?
+  public let businessProvince: Swift.String?
+  public let businessTelephone: Swift.String?
+  public let acquirerBusinessNo: Swift.String?
+  public let taxIdentificationNo: Swift.String?
+  public let merchantCategoryCode: Swift.String?
+  public func encode(to encoder: any Swift.Encoder) throws
+  public init(from decoder: any Swift.Decoder) throws
+}
+public struct RoutingProfileTerminal : Swift.Codable {
+  public let terminalInfo: TerminalSDK.RoutingProfileTerminalInfo
+  public let merchantData: TerminalSDK.RoutingProfileMerchantData
+  public func encode(to encoder: any Swift.Encoder) throws
+  public init(from decoder: any Swift.Decoder) throws
+}
+public struct RoutingProfile : Swift.Codable {
+  public let serialNumber: Swift.String
+  public let terminals: [TerminalSDK.RoutingProfileTerminal]
+  public init(from decoder: any Swift.Decoder) throws
+  public func encode(to encoder: any Swift.Encoder) throws
+}
+public struct BatchCaptureResponse : Swift.Codable {
+  public let value: Swift.Bool
+  public func encode(to encoder: any Swift.Encoder) throws
+  public init(from decoder: any Swift.Decoder) throws
+}
+public struct RoutingSession {
+  public let intentId: TerminalSDK.IntentID
+  public let pinCaptured: Swift.Bool
+  public let createdAt: Foundation.Date
+  public func isExpired(maxAge: Foundation.TimeInterval = 3 * 60) -> Swift.Bool
+}
+public struct DisplayError {
+  public let title: TerminalSDK.LocalizedString
+  public let label: TerminalSDK.LocalizedString
+  public init(title: TerminalSDK.LocalizedString, label: TerminalSDK.LocalizedString)
+  public init(titleEnglish: Swift.String, titleArabic: Swift.String, labelEnglish: Swift.String, labelArabic: Swift.String)
+}
+public struct LocalizedString : Swift.Sendable {
+  public var arabic: Swift.String
+  public var english: Swift.String
+  public init(arabic: Swift.String = "", english: Swift.String = "")
+}
+final public class TerminalInterface : Foundation.ObservableObject {
+  final public var onLogout: TerminalSDK.LogoutNotifier?
+  final public var onTerminalDisconnect: TerminalSDK.TerminalDisconnectionNotifier?
+  public init(_ configuration: TerminalSDK.TerminalSDKConfiguration = .init(), onLogout: TerminalSDK.LogoutNotifier? = nil, onTerminalDisconnect: TerminalSDK.TerminalDisconnectionNotifier? = nil)
+  final public func login(with method: TerminalSDK.LoginMethod, handler: TerminalSDK.LoginHandler? = nil)
+  final public func authenticator(with authenticationMethod: TerminalSDK.AuthenticationMethod) -> TerminalSDK.Authenticator
+  final public func user(with id: TerminalSDK.UserID) -> TerminalSDK.NearpayUser?
+  final public func terminal(with id: TerminalSDK.TerminalID, readerLinkingHandler: TerminalSDK.ReaderLinkingHandler? = nil) -> TerminalSDK.NearpayTerminal?
+  public typealias ObjectWillChangePublisher = Combine.ObservableObjectPublisher
+  @objc deinit
+}
+@_hasMissingDesignatedInitializers final public class NearpayUser : Swift.Identifiable, Foundation.ObservableObject {
+  final public var onLogout: TerminalSDK.LogoutNotifier?
+  final public var onTerminalDisconnect: TerminalSDK.TerminalDisconnectionNotifier?
+  final public var id: TerminalSDK.UserID {
+    get
+  }
+  final public var info: TerminalSDK.UserInfo {
+    get
+  }
+  final public func getTerminalList(query: TerminalSDK.TerminalListQuery? = nil, handler: TerminalSDK.TerminalListRequestHandler? = nil)
+  final public func connectToTerminal(with id: TerminalSDK.TerminalID, readerLinkingHandler: TerminalSDK.ReaderLinkingHandler? = nil, handler: TerminalSDK.TerminalConnectionHandler? = nil)
+  final public func logout(handler: TerminalSDK.LogoutHandler? = nil)
+  public typealias ID = TerminalSDK.UserID
+  public typealias ObjectWillChangePublisher = Combine.ObservableObjectPublisher
+  @objc deinit
+}
+public struct UserInfo : Swift.Codable, Swift.Equatable {
+  public let id: TerminalSDK.UserID
+  public let name: Swift.String
+  public let mobile: Swift.String?
+  public let email: Swift.String?
+  public let jwt: Swift.String?
+  public static func == (a: TerminalSDK.UserInfo, b: TerminalSDK.UserInfo) -> Swift.Bool
+  public func encode(to encoder: any Swift.Encoder) throws
+  public init(from decoder: any Swift.Decoder) throws
+}
+extension TerminalSDK.PINEntryViewModifier : Swift.Sendable {}
+extension TerminalSDK.TerminalCountry : Swift.Equatable {}
+extension TerminalSDK.TerminalCountry : Swift.Hashable {}
+extension TerminalSDK.TerminalCountry : Swift.Sendable {}
+extension TerminalSDK.TerminalCountry : Swift.BitwiseCopyable {}
+extension TerminalSDK.TerminalEnvironment : Swift.Equatable {}
+extension TerminalSDK.TerminalEnvironment : Swift.Hashable {}
+extension TerminalSDK.TerminalEnvironment : Swift.Sendable {}
+extension TerminalSDK.TerminalEnvironment : Swift.BitwiseCopyable {}
+extension TerminalSDK.TerminalMode : Swift.Equatable {}
+extension TerminalSDK.TerminalMode : Swift.Hashable {}
+extension TerminalSDK.TerminalMode : Swift.Sendable {}
+extension TerminalSDK.TerminalMode : Swift.BitwiseCopyable {}
+extension TerminalSDK.InvalidError : Swift.Equatable {}
+extension TerminalSDK.InvalidError : Swift.Hashable {}
+extension TerminalSDK.PaymentCardScheme : Swift.Equatable {}
+extension TerminalSDK.PaymentCardScheme : Swift.Hashable {}
+extension TerminalSDK.PaymentCardScheme : Swift.RawRepresentable {}
+extension TerminalSDK.TransactionType : Swift.Equatable {}
+extension TerminalSDK.TransactionType : Swift.Hashable {}
+extension TerminalSDK.TransactionType : Swift.RawRepresentable {}
+extension TerminalSDK.CardScheme : Swift.Equatable {}
+extension TerminalSDK.CardScheme : Swift.Hashable {}
+extension TerminalSDK.CardScheme : Swift.RawRepresentable {}
+extension TerminalSDK.TransactionEvent.Receipt.ReceiptType : Swift.Equatable {}
+extension TerminalSDK.TransactionEvent.Receipt.ReceiptType : Swift.Hashable {}
+extension TerminalSDK.TransactionEvent.Receipt.ReceiptType : Swift.RawRepresentable {}
+extension TerminalSDK.TransactionStatus : Swift.Equatable {}
+extension TerminalSDK.TransactionStatus : Swift.Hashable {}
+extension TerminalSDK.TransactionStatus : Swift.RawRepresentable {}
+extension TerminalSDK.PINEntryView : Swift.Sendable {}
+extension TerminalSDK.QrPaymentStatus : Swift.Equatable {}
+extension TerminalSDK.QrPaymentStatus : Swift.Hashable {}
+extension TerminalSDK.AppleReadingEvent : Swift.Equatable {}
+extension TerminalSDK.AppleReadingEvent : Swift.Hashable {}
+extension TerminalSDK.AppleReadingEvent : Swift.Sendable {}
+extension TerminalSDK.AppleReadingEvent : Swift.BitwiseCopyable {}
+extension TerminalSDK.QrPaymentViewModifier : Swift.Sendable {}
+extension TerminalSDK.QrPaymentView : Swift.Sendable {}
+extension TerminalSDK.NearpayLinkingState : Swift.Equatable {}
+extension TerminalSDK.NearpayLinkingState : Swift.Hashable {}
+extension TerminalSDK.MessageErrorLevel : Swift.Equatable {}
+extension TerminalSDK.MessageErrorLevel : Swift.Hashable {}
+extension TerminalSDK.MessageErrorLevel : Swift.RawRepresentable {}
+extension TerminalSDK.TerminalOperation : Swift.Equatable {}
+extension TerminalSDK.TerminalOperation : Swift.Hashable {}
+extension TerminalSDK.TerminalOperation : Swift.RawRepresentable {}
+extension TerminalSDK.PaymentType : Swift.Equatable {}
+extension TerminalSDK.PaymentType : Swift.Hashable {}
+extension TerminalSDK.PaymentType : Swift.RawRepresentable {}

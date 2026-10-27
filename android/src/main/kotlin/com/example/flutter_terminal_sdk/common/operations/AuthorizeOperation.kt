@@ -5,6 +5,8 @@ import android.os.Looper
 import com.example.flutter_terminal_sdk.common.NearpayProvider
 import com.example.flutter_terminal_sdk.common.filter.ArgsFilter
 import com.example.flutter_terminal_sdk.common.status.ResponseHandler
+import com.example.flutter_terminal_sdk.common.JSON_MAP_FAILED_MESSAGE
+import com.example.flutter_terminal_sdk.common.toJsonMap
 import com.google.gson.Gson
 import io.nearpay.terminalsdk.data.dto.AuthorizeResponse
 import io.nearpay.terminalsdk.data.dto.PaymentScheme
@@ -29,9 +31,15 @@ class AuthorizeOperation(provider: NearpayProvider) : BaseOperation(provider) {
         val schemeString = filter.getString("scheme")
         val scheme = schemeString?.uppercase()?.let { PaymentScheme.valueOf(it) }
 
-
         val customerReferenceNumber = filter.getString("customerReferenceNumber")
 
+        invalidWholeNumber(filter, "surchargeAmount", "INVALID_SURCHARGE_AMOUNT")
+            ?.let { return response(it) }
+        invalidWholeNumber(filter, "taxPercentage", "INVALID_TAX_PERCENTAGE")
+            ?.let { return response(it) }
+
+        val surchargeAmount = filter.getLong("surchargeAmount")
+        val taxPercentage = filter.getLong("taxPercentage")
 
         val uuid = filter.getString("uuid") ?: return response(
             ResponseHandler.error(
@@ -41,12 +49,20 @@ class AuthorizeOperation(provider: NearpayProvider) : BaseOperation(provider) {
 
         val terminal =
             provider.activity?.let { provider.terminalSdk?.getTerminal(it, terminalUUID) }
+                ?: return response(
+                    ResponseHandler.error(
+                        "TERMINAL_NOT_FOUND",
+                        "Terminal with uuid = $terminalUUID = not found"
+                    )
+                )
 
-        terminal?.authorize(
+        terminal.authorize(
             amount = amount,
             scheme = scheme,
             uuid = uuid,
             customerReferenceNumber = customerReferenceNumber,
+            surchargeAmount = surchargeAmount,
+            taxPercentage = taxPercentage,
             readCardListener = object : ReadCardListener {
                 override fun onReaderClosed() {
                     Timber.tag("AuthorizeOperation").d("onReaderClosed")
@@ -73,7 +89,7 @@ class AuthorizeOperation(provider: NearpayProvider) : BaseOperation(provider) {
                 override fun onReadCardFailure(readCardFailure: ReadCardFailure) {
                     Timber.tag("AuthorizeOperation").d("onReadCardFailure $readCardFailure")
                     sendAuthorizeEvent(
-                        uuid, "cardReadFailure", readCardFailure.toString(), null
+                        uuid, "cardReadFailure", ResponseHandler.eventMessage(readCardFailure), null
                     )
                 }
 
@@ -117,22 +133,33 @@ class AuthorizeOperation(provider: NearpayProvider) : BaseOperation(provider) {
             authorizeListener = object : io.nearpay.terminalsdk.listeners.AuthorizeListener {
                 override fun onAuthorizeCompleted(response: AuthorizeResponse) {
                     Timber.tag("AuthorizeOperation").d("onAuthorizeCompleted $response")
-                    val jsonString = gson.toJson(response)
-                    val map = gson.fromJson(jsonString, Map::class.java) as Map<*, *>
-                    sendAuthorizeEvent(
-                        uuid, "authorizeCompleted", "Authorization completed successfully", map
-                    )
+                    val map = gson.toJsonMap(response)
+                    if (map == null) {
+                        sendAuthorizeEvent(
+                            uuid,
+                            "authorizeFailure",
+                            JSON_MAP_FAILED_MESSAGE,
+                            null
+                        )
+                    } else {
+                        sendAuthorizeEvent(
+                            uuid,
+                            "authorizeCompleted",
+                            "Authorization completed successfully",
+                            map
+                        )
+                    }
                 }
 
                 override fun onAuthorizeFailure(authorizeFailure: AuthorizeFailure) {
                     Timber.tag("AuthorizeOperation").d("onAuthorizeFailure $authorizeFailure")
                     sendAuthorizeEvent(
-                        uuid, "authorizeFailure", authorizeFailure.toString(), null
+                        uuid, "authorizeFailure", ResponseHandler.eventMessage(authorizeFailure), null
                     )
 
                 }
             })
-
+        response(ResponseHandler.success("Authorize operation started"))
     }
 
     private fun sendAuthorizeEvent(
@@ -150,7 +177,6 @@ class AuthorizeOperation(provider: NearpayProvider) : BaseOperation(provider) {
             }
 
         } catch (e: Exception) {
-            // Log the error but do not disrupt the purchase flow
             Timber.e(
                 e,
                 "Failed to send authorize event: $eventType for intentUUID: $intentUUID with error: ${e.message}"

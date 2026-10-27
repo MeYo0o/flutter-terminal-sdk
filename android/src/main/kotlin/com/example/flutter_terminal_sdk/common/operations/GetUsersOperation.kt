@@ -8,29 +8,26 @@ import timber.log.Timber
 class GetUsersOperation(provider: NearpayProvider) : BaseOperation(provider) {
     override fun run(filter: ArgsFilter, response: (Map<String, Any>) -> Unit) {
 
-
         val userList = provider.terminalSdk?.getUsers() ?: return response(
             ResponseHandler.error("INVALID_USERS", "No users found")
         )
 
         val mMap =
-            mutableMapOf<String, Map<String, String?>>()  // Correct mutable map initialization
+            mutableMapOf<String, Map<String, String?>>()
 
         for (user in userList) {
             Timber.d("first loop user uuid: ${user.first}")
             Timber.d("first loop user name: ${user.second}")
 
             val simpleUser = mapOf(
-                // Use mapOf to create a map
-                "userUUID" to user.first,  // Correct the key-value pairing
-                "name" to user.second, // Correct the key-value pairing
+                "userUUID" to user.first,
+                "name" to user.second,
             )
 
-            mMap[user.first ?: "unknown"] = simpleUser  // Add the map entry to mMap
+            mMap[user.first ?: "unknown"] = simpleUser
         }
 
         response(ResponseHandler.success("Users fetched successfully: $userList", mMap))
-
 
     }
 }

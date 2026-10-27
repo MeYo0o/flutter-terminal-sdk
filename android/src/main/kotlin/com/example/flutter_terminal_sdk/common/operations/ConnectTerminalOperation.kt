@@ -23,9 +23,10 @@ class ConnectTerminalOperation(provider: NearpayProvider) : BaseOperation(provid
 
         val userUUID = filter.getString("userUUID")
             ?: return response(ResponseHandler.error("MISSING_USER_UUID", "User UUID is required"))
+
+        val requestedName = filter.getString("name")
         val user =
             try {
-
 
                 provider.terminalSdk?.getUserByUUID(userUUID)
                     ?: return response(
@@ -35,20 +36,18 @@ class ConnectTerminalOperation(provider: NearpayProvider) : BaseOperation(provid
             } catch (e: Throwable) {
                 Timber.tag("ConnectTerminalOperation").e("Error getting user by UUID: $userUUID - ${e.message}")
                 return response(
-                    ResponseHandler.error(
+                    ResponseHandler.errorFromFailure(
                         "GET_USER_BY_UUID_FAILURE",
-                        e.message ?: "Unknown error"
+                        e,
+                        "Unknown error"
                     )
                 )
             }
         val activity: Activity = provider.activity
             ?: return response(ResponseHandler.error("NO_ACTIVITY", "Activity reference is null"))
 
-
-
         Timber.tag("ConnectTerminalOperation")
             .d("Fetching terminal with terminalUUID: $terminalUUID")
-
 
         user.getTerminalById(terminalUUID, object : GetTerminalByIdListener {
             override fun onGetTerminalSuccess(terminalConnection: TerminalConnection) {
@@ -62,13 +61,14 @@ class ConnectTerminalOperation(provider: NearpayProvider) : BaseOperation(provid
                         Timber.tag("ConnectTerminalOperation")
                             .d("Connected to terminal with TID: ${terminal.terminalUUID}")
 
+                        provider.setCurrentTerminal(terminal)
+
                         val resultData = mapOf(
                             "tid" to terminal.tid,
                             "isReady" to terminal.isTerminalReady(),
                             "terminalUUID" to terminal.terminalUUID,
                             "uuid" to terminalUUID,
-                            "name" to terminal.name,
-
+                            "name" to (terminal.name ?: requestedName),
 
                             )
                         response(
@@ -84,9 +84,10 @@ class ConnectTerminalOperation(provider: NearpayProvider) : BaseOperation(provid
                             "Failed to connect to terminal"
                         )
                         response(
-                            ResponseHandler.error(
+                            ResponseHandler.errorFromFailure(
                                 "CONNECT_FAILURE",
-                                connectTerminalFailure.toString()
+                                connectTerminalFailure,
+                                "Failed to connect to terminal"
                             )
                         )
                     }
@@ -96,9 +97,10 @@ class ConnectTerminalOperation(provider: NearpayProvider) : BaseOperation(provid
 
             override fun onGetTerminalFailure(getTerminalByIdFailure: GetTerminalByIdFailure) {
                 response(
-                    ResponseHandler.error(
+                    ResponseHandler.errorFromFailure(
                         "GET_TERMINAL_BY_ID_FAILURE",
-                        getTerminalByIdFailure.toString()
+                        getTerminalByIdFailure,
+                        "Failed to get terminal"
                     )
                 )
             }

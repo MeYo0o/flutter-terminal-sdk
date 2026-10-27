@@ -1,11 +1,9 @@
 package com.example.flutter_terminal_sdk.common.operations
 
-
 import com.example.flutter_terminal_sdk.common.NearpayProvider
 import com.example.flutter_terminal_sdk.common.filter.ArgsFilter
 import com.example.flutter_terminal_sdk.common.status.ResponseHandler
 import timber.log.Timber
-
 
 class DismissReaderUiOperation(provider: NearpayProvider) : BaseOperation(provider) {
     override fun run(filter: ArgsFilter, response: (Map<String, Any>) -> Unit) {
@@ -34,7 +32,6 @@ class DismissReaderUiOperation(provider: NearpayProvider) : BaseOperation(provid
                 true,
             )
         )
-
 
     }
 }

@@ -20,7 +20,6 @@ class GetTerminalOperation(provider: NearpayProvider) : BaseOperation(provider) 
             )
         )
 
-
         try {
 
             val terminal =
@@ -28,6 +27,8 @@ class GetTerminalOperation(provider: NearpayProvider) : BaseOperation(provider) 
                     ?: return response(
                         ResponseHandler.error("INVALID_TERMINAL", "No terminal found for terminalUUID: $terminalUUID")
                     )
+
+            provider.setCurrentTerminal(terminal)
 
             val resultData = mapOf(
                 "tid" to terminal.tid,
@@ -39,13 +40,11 @@ class GetTerminalOperation(provider: NearpayProvider) : BaseOperation(provider) 
                 )
             response(ResponseHandler.success("Connected to terminal", resultData))
 
-
         } catch (e: Exception) {
             return response(
                 ResponseHandler.error("ERROR", e.message ?: "An error occurred")
             )
         }
-
 
     }
 }

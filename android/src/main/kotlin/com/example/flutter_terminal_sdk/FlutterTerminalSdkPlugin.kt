@@ -5,9 +5,11 @@ import android.app.Activity
 import android.content.Context
 import androidx.annotation.NonNull
 import com.example.flutter_terminal_sdk.common.filter.ArgsFilter
+import com.example.flutter_terminal_sdk.common.status.ResponseHandler
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
+import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import com.example.flutter_terminal_sdk.common.NearpayProvider
@@ -21,35 +23,57 @@ class FlutterTerminalSdkPlugin : FlutterPlugin, MethodChannel.MethodCallHandler,
     private lateinit var channel: MethodChannel
     private var context: Context? = null
     private var activity: Activity? = null
-    private lateinit var provider: NearpayProvider
+    private var provider: NearpayProvider? = null
     private var operatorFactory: NearpayOperatorFactory? = null
     private val pluginScope = CoroutineScope(Dispatchers.IO)
 
+    private val backgroundMethods = setOf("routingLookup", "routingExecute", "routingInstallments", "getRoutingProfile")
+
+    companion object {
+        private const val TERMINAL_SDK_VERSION_FALLBACK = "0.0.181-SNAPSHOT5-LITE"
+        private const val TERMINAL_SDK_INFO_CLASS = "io.nearpay.terminalsdk.utils.GetSdkInfoKt"
+    }
 
     override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
-        Timber.uprootAll() // Remove any existing Timber logs
-//         Optionally, comment out or remove this line to disable Timber completely:
-//        Timber.plant(Timber.DebugTree());
+        attachToMessenger(flutterPluginBinding.binaryMessenger, flutterPluginBinding.applicationContext, null)
+    }
 
-        context = flutterPluginBinding.applicationContext
-        channel = MethodChannel(flutterPluginBinding.binaryMessenger, "nearpay_plugin")
+    private fun attachToMessenger(
+        binaryMessenger: BinaryMessenger,
+        applicationContext: Context,
+        attachedActivity: Activity?
+    ) {
+        Timber.uprootAll()
+
+        context = applicationContext
+        channel = MethodChannel(binaryMessenger, "nearpay_plugin")
         channel.setMethodCallHandler(this)
+
+        attachedActivity?.let { attachActivity(it) }
     }
 
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
-        activity = binding.activity
-        provider = NearpayProvider(binding.activity, channel)
-        provider.attachActivity(binding.activity)
-        operatorFactory = NearpayOperatorFactory(provider)
+        attachActivity(binding.activity)
+    }
+
+    private fun attachActivity(attachedActivity: Activity) {
+        activity = attachedActivity
+        val attachedProvider = provider ?: NearpayProvider(attachedActivity, channel).also {
+            provider = it
+        }
+        attachedProvider.attachActivity(attachedActivity)
+        operatorFactory = NearpayOperatorFactory(attachedProvider)
     }
 
     override fun onDetachedFromEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
         channel.setMethodCallHandler(null)
+        provider = null
+        operatorFactory = null
     }
 
     override fun onDetachedFromActivity() {
         activity = null
-        provider.detachActivity()
+        provider?.detachActivity()
         operatorFactory = null
     }
 
@@ -68,12 +92,15 @@ class FlutterTerminalSdkPlugin : FlutterPlugin, MethodChannel.MethodCallHandler,
             "initialize" -> {
                 pluginScope.launch {
                     try {
-                        if (!provider.isInitialized()) {
-                            provider.initializeSdk(argsFilter)
+                        val attachedProvider = provider
+                            ?: throw IllegalStateException("Activity must be attached before initializing Nearpay plugin")
+
+                        if (!attachedProvider.isInitialized()) {
+                            attachedProvider.initializeSdk(argsFilter)
                         }
 
                         if (operatorFactory == null) {
-                            operatorFactory = NearpayOperatorFactory(provider)
+                            operatorFactory = NearpayOperatorFactory(attachedProvider)
                         }
                         Timber.d("Did initialize")
                         withContext(Dispatchers.Main) {
@@ -91,6 +118,11 @@ class FlutterTerminalSdkPlugin : FlutterPlugin, MethodChannel.MethodCallHandler,
                 }
             }
 
+            "getVersion" -> {
+                val nativeVersion = activity?.let { resolveNativeTerminalSdkVersion(it) }
+                result.success(nativeVersion ?: TERMINAL_SDK_VERSION_FALLBACK)
+            }
+
             else -> {
                 if (operatorFactory == null) {
                     result.error(
@@ -104,13 +136,77 @@ class FlutterTerminalSdkPlugin : FlutterPlugin, MethodChannel.MethodCallHandler,
                 val operation = operatorFactory!!.getOperation(call.method)
 
                 if (operation != null) {
-                    operation.run(argsFilter) { response ->
-                        result.success(response)
+                    if (call.method in backgroundMethods) {
+                        pluginScope.launch {
+                            try {
+                                operation.run(argsFilter) { response ->
+                                    pluginScope.launch(Dispatchers.Main) {
+                                        deliver(call.method, response, result)
+                                    }
+                                }
+                            } catch (e: Throwable) {
+                                withContext(Dispatchers.Main) {
+                                    result.success(operationFailedResponse(e))
+                                }
+                            }
+                        }
+                    } else {
+                        try {
+                            operation.run(argsFilter) { response ->
+                                deliver(call.method, response, result)
+                            }
+                        } catch (e: Throwable) {
+                            result.success(operationFailedResponse(e))
+                        }
                     }
                 } else {
                     result.notImplemented()
                 }
             }
         }
+    }
+
+    private fun deliver(
+        method: String,
+        response: Map<String, Any>,
+        result: MethodChannel.Result
+    ) {
+        if (method == "disconnectTerminal") {
+            emitDisconnectEventIfNeeded(response)
+        }
+        result.success(response)
+    }
+
+    private fun operationFailedResponse(error: Throwable): Map<String, Any> =
+        ResponseHandler.errorFromFailure(
+            "OPERATION_FAILED",
+            error,
+            error.message ?: "Operation failed"
+        )
+
+    private fun emitDisconnectEventIfNeeded(response: Map<*, *>) {
+        val status = (response["status"] as? String)?.trim()?.lowercase()
+        if (status != "success") return
+        val data = response["data"] as? Map<*, *> ?: return
+        val disconnected = data["disconnected"] as? Boolean ?: return
+        if (!disconnected) return
+        val terminalUUID = (data["terminalUUID"] as? String)?.trim()?.takeIf { it.isNotEmpty() }
+            ?: return
+        pluginScope.launch(Dispatchers.Main) {
+            channel.invokeMethod(
+                "NearpayTerminalOnDisconnect",
+                mapOf("terminalUUID" to terminalUUID)
+            )
+        }
+    }
+
+    private fun resolveNativeTerminalSdkVersion(activity: Activity): String? {
+        return runCatching {
+            val sdkInfoClass = Class.forName(TERMINAL_SDK_INFO_CLASS)
+            val getSdkVersionMethod = sdkInfoClass.getMethod("getSdkVersion", Activity::class.java)
+            (getSdkVersionMethod.invoke(null, activity) as? String)
+                ?.trim()
+                ?.takeIf { it.isNotEmpty() }
+        }.getOrNull()
     }
 }

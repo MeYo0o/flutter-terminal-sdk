@@ -5,6 +5,8 @@ import android.os.Looper
 import com.example.flutter_terminal_sdk.common.NearpayProvider
 import com.example.flutter_terminal_sdk.common.filter.ArgsFilter
 import com.example.flutter_terminal_sdk.common.status.ResponseHandler
+import com.example.flutter_terminal_sdk.common.JSON_MAP_FAILED_MESSAGE
+import com.example.flutter_terminal_sdk.common.toJsonMap
 import com.google.gson.Gson
 import io.nearpay.terminalsdk.data.dto.CaptureResponse
 import io.nearpay.terminalsdk.listeners.CaptureAuthorizationListener
@@ -25,7 +27,6 @@ class CaptureAuthorizationWithTapOperation(provider: NearpayProvider) : BaseOper
         val amount = filter.getLong("amount")
             ?: return response(ResponseHandler.error("MISSING_AMOUNT", "Amount is required"))
 
-
         val uuid = filter.getString("uuid")
             ?: return response(ResponseHandler.error("MISSING_UUID", "UUID is required"))
 
@@ -36,7 +37,6 @@ class CaptureAuthorizationWithTapOperation(provider: NearpayProvider) : BaseOper
                     "Authorization UUID is required"
                 )
             )
-
 
         val terminal =
             provider.activity?.let { provider.terminalSdk?.getTerminal(it, terminalUUID) }
@@ -77,7 +77,7 @@ class CaptureAuthorizationWithTapOperation(provider: NearpayProvider) : BaseOper
                     sendCaptureAuthorizationWithTapEvent(
                         uuid,
                         "cardReadFailure",
-                        readCardFailure.toString(),
+                        ResponseHandler.eventMessage(readCardFailure),
                         null
                     )
                 }
@@ -127,14 +127,22 @@ class CaptureAuthorizationWithTapOperation(provider: NearpayProvider) : BaseOper
                 override fun onCaptureAuthorizationWithTapCompleted(captureAuthorization: CaptureResponse) {
                     Timber.tag("CaptureAuthorizationWithTapOperation")
                         .d("onCaptureAuthorizationWithTapCompleted $captureAuthorization")
-                    val jsonString = gson.toJson(captureAuthorization)
-                    val map = gson.fromJson(jsonString, Map::class.java) as Map<*, *>
-                    sendCaptureAuthorizationWithTapEvent(
-                        uuid,
-                        "captureWithTapCompleted",
-                        null,
-                        map
-                    )
+                    val map = gson.toJsonMap(captureAuthorization)
+                    if (map == null) {
+                        sendCaptureAuthorizationWithTapEvent(
+                            uuid,
+                            "sendTransactionFailure",
+                            JSON_MAP_FAILED_MESSAGE,
+                            null
+                        )
+                    } else {
+                        sendCaptureAuthorizationWithTapEvent(
+                            uuid,
+                            "captureWithTapCompleted",
+                            null,
+                            map
+                        )
+                    }
                 }
 
                 override fun onCaptureAuthorizationWithTapFailure(captureAuthorizationFailure: CaptureAuthorizationWithTapFailure) {
@@ -158,7 +166,7 @@ class CaptureAuthorizationWithTapOperation(provider: NearpayProvider) : BaseOper
 
             }
         )
-
+        response(ResponseHandler.success("Capture authorization with tap started"))
     }
 
     private fun sendCaptureAuthorizationWithTapEvent(
@@ -180,7 +188,6 @@ class CaptureAuthorizationWithTapOperation(provider: NearpayProvider) : BaseOper
             }
 
         } catch (e: Exception) {
-            // Log the error but do not disrupt the purchase flow
             Timber.e(
                 e,
                 "Failed to send captureAuthorizationWithTap event: $eventType for uuid: $uuid with error: ${e.message}"
@@ -188,6 +195,5 @@ class CaptureAuthorizationWithTapOperation(provider: NearpayProvider) : BaseOper
             throw e
         }
     }
-
 
 }

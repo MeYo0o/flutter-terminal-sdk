@@ -1,74 +1,100 @@
+# NearPay Flutter Terminal SDK
 
-# **Flutter TerminalSDK Documentation**
+Accept in-person card payments from a single Dart API on **both Android and iOS** (Tap to Pay). The plugin wraps the native NearPay Terminal SDKs and exposes one consistent, intent-centric API.
 
-The `TerminalSDK` library provides a set of classes and methods for handling user authentication, terminal connections, and card transactions.
+A few features are platform-specific (see [Platform Availability](#platform-availability)). Calling an unavailable feature throws a `NearpayException` with a clear message instead of failing silently.
 
-### Step 1: Google Play Integrity and Huawei Safety Detect
+---
 
-This library uses Google Play Integrity (Mandatory) and Huawei Safety Detect (Optional) to verify the integrity of the device.
+## Table of Contents
 
-### Google Play Integrity (Mandatory)
+1. [Requirements](#requirements)
+2. [Installation](#installation)
+3. [iOS Setup](#ios-setup)
+4. [Android Setup](#android-setup)
+5. [Initialization](#initialization)
+6. [Authentication](#authentication)
+7. [Terminals](#terminals)
+8. [Transactions](#transactions)
+9. [Reconciliation](#reconciliation)
+10. [Queries](#queries)
+11. [Authorizations](#authorizations)
+12. [Callbacks](#callbacks)
+13. [Error Handling](#error-handling)
+14. [Utilities](#utilities)
+15. [Platform Availability](#platform-availability)
 
-To make the library work, you need to have a Google Cloud project with Play Integrity enabled and pass the Google Cloud project number in the builder. Here are the steps to do so:
+---
 
-**Create a Google Cloud Project:**
+## Requirements
 
-- Go to the [Google Cloud Console](https://console.cloud.google.com/).
-  - Create a new project or use an existing one.
+**iOS**
 
-**Get the Project Number:**
+- iOS 15.5+. Tap to Pay needs iOS 17 and a physical device (it does not run on the simulator)
+- Xcode 15+ and CocoaPods
+- Apple entitlement for proximity-reader payment acceptance
 
-- Go to the [Google Cloud Console](https://console.cloud.google.com/).
-- Click on the project you created.
-- Go to the project settings.
-- Copy the project number.
+**Android**
 
-**Enable Play Integrity API:**
+- Android 9+ (API 28) device with NFC
+- JDK 17
+- Google Play Services (or Huawei Mobile Services for Huawei devices)
 
-- Go to the [Google Play Console](https://play.google.com/console/).
-- Navigate to Release > App Integrity.
-- Under the Play Integrity API, select Link a Cloud project.
-- Choose the Cloud project you want to link to your app, which will enable Play Integrity API responses.
-- This may change in the future, so please refer to the official documentation here: [Google Play Integrity documentation](https://developer.android.com/google/play/integrity/setup)
+---
 
-**Pass the Project Number in the Builder:**
+## Installation
 
-- Use the `googleCloudProjectNumber` method in the builder to pass the project number.
+Add the plugin to your `pubspec.yaml`:
 
-### Huawei Safety Detect (Optional)
+```yaml
+dependencies:
+  flutter_terminal_sdk:
+    path: ../ # or your package source
+```
 
-To use Huawei Safety Detect, you need to have a Huawei Developer account and pass the Safety Detect API key in the builder. Here are the steps to do so:
+Then run `flutter pub get`.
 
-**Create a Huawei Developer Account:**
+---
 
-- Go to the [Huawei Developer Console](https://developer.huawei.com/consumer/en/console).
-- Create a new account or use an existing one.
+## iOS Setup
 
-**Create an App:**
+iOS uses the pre-built `TerminalSDK.xcframework` (Tap to Pay).
 
-- Go to AppGallery Connect.
-- Create a new app or use an existing one.
+- The framework is committed under `ios/Frameworks/TerminalSDK.xcframework`, so `pod install` works out of the box. To refresh it from the source SDK, run `ios/scripts/copy_unified_framework.sh`.
+- Pin the deployment target to iOS 15.5 and apply the shared post-install hook from `ios/nearpay_pods.rb` (see `example/ios/Podfile`).
 
-**Enable Safety Detect:**
+Add the required entitlements and `Info.plist` usage strings to your host app:
 
-- Go to the AppGallery Connect console.
-- Navigate to Develop > Security Detection.
-- Enable Safety Detect.
+```xml
+<!-- Runner.entitlements -->
+<key>com.apple.developer.nfc.readersession.formats</key>
+<array><string>TAG</string></array>
+<key>com.apple.developer.proximity-reader.payment.acceptance</key>
+<true/>
+```
 
-**Get the Safety Detect API Key:**
+```xml
+<!-- Info.plist -->
+<key>NFCReaderUsageDescription</key>
+<string>Needed to accept contactless payments.</string>
+```
 
-- Go to the AppGallery Connect console.
-- Navigate to Develop > Security Detection.
-- Click on the Safety Detect tab.
-- Copy the API key.
+If your backend uses non-ATS-compliant endpoints, add an App Transport Security override in `Info.plist`. See `example/ios/Runner/Info.plist` for a complete reference.
 
-**Pass the API Key in the Builder:**
+---
 
-- Use the `safetyDetectApiKey` method in the builder to pass the Safety Detect API key.
+## Android Setup
 
-### Configuring the Secure Maven Repository / Dependencies
+### Device integrity
 
-For the ReaderCore library, you can include the following configuration in your root-level `build.gradle` file:
+The SDK uses **Google Play Integrity** (mandatory) and **Huawei Safety Detect** (optional) to verify device integrity.
+
+- **Google Play Integrity:** create/select a Google Cloud project, enable the Play Integrity API (Play Console → *Release → App Integrity*), and pass the project number to `initialize(googleCloudProjectNumber: ...)`. See the [official setup guide](https://developer.android.com/google/play/integrity/setup).
+- **Huawei Safety Detect:** enable Safety Detect in AppGallery Connect and pass the API key to `initialize(huaweiSafetyDetectApiKey: ...)`.
+
+### Secure Maven repository
+
+Add the ReaderCore repository to your root `build.gradle`:
 
 ```kotlin
 allprojects {
@@ -78,435 +104,459 @@ allprojects {
             url = "https://gitlab.com/api/v4/projects/37026421/packages/maven"
             credentials(HttpHeaderCredentials) {
                 name = 'Private-Token'
-                value = "ADD_YOUR_TOKEN_HERE"
+                value = props.getProperty("gitlab.token", "ADD_YOUR_TOKEN_HERE")
             }
-            authentication {
-                header(HttpHeaderAuthentication)
+            authentication { header(HttpHeaderAuthentication) }
+            content {
+                includeGroup "io.nearpay"
+                includeGroup "local.libs"
             }
         }
-
         maven { url 'https://jitpack.io' }
         maven { url 'https://developer.huawei.com/repo/' }
     }
 }
 ```
 
-In addition, you have to change the `minSdk` version to 28 and the `versionName` to 75 in your `build.gradle` file:
-
-### Kotlin
+### Gradle config
 
 ```kotlin
 android {
     defaultConfig {
         minSdk = 28
-        versionName = "75"
     }
 }
 ```
 
-Contact Nearpay to register your `applicationId` and get the necessary credentials.
-
-### AndroidManifest.xml Configuration
-
-In your `AndroidManifest.xml` file, add the following line:
+Add the following to your `AndroidManifest.xml` to avoid manifest-merger issues:
 
 ```xml
-<application android:allowBackup="true"
-    tools:replace="android:allowBackup" /> <!-- Add this line to avoid manifest merger issues -->
+<application
+    android:allowBackup="true"
+    tools:replace="android:allowBackup" />
 ```
 
-### Step 2: Add the dependencies to your `pubspec.yaml` file: (Very Important)
+> Contact NearPay to register your `applicationId` and obtain credentials.
 
-```yaml
-dependencies:
-  flutter:
-    sdk: flutter
-  flutter_terminal_sdk:
-    # The example app is bundled with the plugin so we use a path dependency on
-    # the parent directory to use the current plugin's version.
-    
-    # Replace this with the actual path to the plugin on your machine.
-    path: ../ # Path to the plugin
-```
+---
 
-
-## Part 2: **Getting Started with TerminalSDK**
-
-To start using `TerminalSDK`, initialize it with the necessary configurations.
-
-### Dart
+## Initialization
 
 ```dart
-// initializing the terminalSDK may throw an exception, so wrap it in a try-catch block
-final FlutterTerminalSdk _terminalSdk = FlutterTerminalSdk();
-await _terminalSdk.initialize(
+import 'package:flutter_terminal_sdk/flutter_terminal_sdk.dart';
+
+final sdk = FlutterTerminalSdk();
+
+await sdk.initialize(
   environment: Environment.sandbox,
-  googleCloudProjectNumber: 12345678L, // Add your google cloud project number
-  huaweiSafetyDetectApiKey: "your_api_key", // Add your huawei safety detect api key
-  country: Country.tr
+  country: Country.sa,
+  googleCloudProjectNumber: 1234567890,       // Android only
+  huaweiSafetyDetectApiKey: 'YOUR_API_KEY',   // Android only, optional
+  requireNfc: true,                           // Android only, optional, default true
 );
 ```
 
-## Part 3: **Authentication**
+Set `requireNfc: false` to start the SDK on Android devices without NFC.
 
-### **Send OTP**
+`Country.uae` is Android-only. iOS still has no UAE country and treats unknown values as `Country.sa`.
 
-The SDK supports both mobile and email OTP authentication.
-
-#### Mobile Authentication
-
-#### Dart
+Check device readiness before transacting:
 
 ```dart
-await _terminalSdk.sendMobileOtp(mobile);
+await sdk.checkRequiredPermissions();
+final nfcReady = await sdk.isNfcEnabled();
+final wifiReady = await sdk.isWifiEnabled();
+
+// Read the native SDK version.
+final version = await sdk.getVersion();
 ```
 
-#### Email Authentication
+---
 
-#### Dart
+## Authentication
+
+The SDK supports OTP (mobile/email) and JWT authentication.
+
+### OTP
 
 ```dart
-await _terminalSdk.sendEmailOtp(email);
+// Mobile
+await sdk.sendMobileOtp('<MOBILE_NUMBER>');
+final user = await sdk.verifyMobileOtp(mobileNumber: '<MOBILE_NUMBER>', code: '<OTP_CODE>');
+
+// Email
+await sdk.sendEmailOtp('<EMAIL_ADDRESS>');
+final user = await sdk.verifyEmailOtp(email: '<EMAIL_ADDRESS>', code: '<OTP_CODE>');
 ```
 
-### **Verify OTP**
-
-After sending the OTP, verify it to authenticate the user.
-
-#### Mobile Verification
-
-#### Dart
+### JWT
 
 ```dart
-final user = await _terminalSdk.verifyMobileOtp(
-  mobileNumber: mobile,
-  code: code,
+final terminal = await sdk.jwtLogin(jwt: '<YOUR_JWT_TOKEN>');
+```
+
+### Users
+
+```dart
+final user = await sdk.getUserByUUID(uuid: user.userUUID);
+final users = await sdk.getUsers();          // Android only
+await sdk.logout(userUUID: user.userUUID);
+```
+
+> Persisting the user UUID is the integrating app's responsibility, not the SDK's.
+
+---
+
+## Terminals
+
+### List terminals
+
+```dart
+final terminals = await sdk.getTerminalList(user.userUUID, page: 1, pageSize: 10);
+```
+
+### Connect a terminal
+
+```dart
+final terminal = await sdk.connectTerminal(
+  tid: t.tid,
+  userUUID: t.userUUID,
+  terminalUUID: t.uuid,
+  linkingCallbacks: LinkingCallbacks(
+    onLinkingStarted: () {},
+    onLinkingCompleted: (_) {},
+    onLinkingFailure: (error) {},
+  ), // optional
 );
 ```
 
-#### Email Verification
-
-#### Dart
+### Get / refresh a terminal
 
 ```dart
-final user = await _terminalSdk.verifyEmailOtp(
-  email: email,
-  code: code,
-);
+final terminal = await sdk.getTerminal(terminalUUID: '<TERMINAL_UUID>');
 ```
 
-#### JWT Verification
+### Terminal-interface helpers
 
-#### Dart
+Once connected, the same lookups and config are available on the terminal:
 
 ```dart
-final terminalModel = await _terminalSdk.jwtLogin(
-  jwt: jwt,
-);
+final user = await terminal.getUser(user.userUUID);
+final config = await terminal.getTerminalConfig();
+await sdk.disconnectTerminal();
 ```
 
-### **Get User**
+---
 
-You can also get a User instance after calling the getUserByUUID method if the user has already been authenticated before using the SDK and you have their UUID from the previously returned User instance.
+## Transactions
 
-> Saving the user UUID is the responsibility of the developer, not the SDK.
+All transactional flows are **intent-centric**: an intent groups every attempt, event, and receipt of a payment journey. Generate an `intentUUID` and reuse it across related operations. `amount`, `amountOther` and `surchargeAmount` are in minor units (halalas/cents), while `taxPercentage` is a rate scaled by 100, so `400` means 4.00%.
 
-#### Dart
-
-```dart
-final user = await _terminalSdk.getUser(
-  uuid: _verifiedUser!.userUUID!,
-);
-```
-
-### **Get List of Users**
-
-You can also get a List of User after calling the getUsers method and will return a list of authenticated users.
-
-#### Dart
-
-```dart
-final listOfUsers = await _terminalSdk.getUsers();
-```
-
-### **Logout User**
-
-To log out a user and delete its instance from memory, call the logout method.
-
-Takes a User UUID as a parameter and logs out the user.
-
-#### Dart
-
-```dart
-await _terminalSdk.logout(
-  uuid: _verifiedUser!.userUUID!,
-);
-```
-
-## **Part 4: User Operations**
-
-The User class is initialized internally by the SDK and provides methods for managing terminals.
-
-### **List Terminals**
-
-Retrieves a paginated list of terminals associated with the user.
-
-#### Usage
-
-#### Dart
-
-```dart
-final fetchedTerminals = await _terminalSdk.getTerminalList(
-  _verifiedUser!.userUUID!,
-  page: 1,
-  pageSize: 10
-);
-```
-
-## **Part 5: Terminal Connection Operations**
-
-### **Connect Terminal**
-
-Establishes a connection with a terminal.
-
-#### Usage
-
-#### Dart
-
-```dart
-final connectedTerminal = await _terminalSdk.connectTerminal(
-  tid: terminal.tid,
-  userUUID: terminal.userUUID,
-  terminalUUID: terminal.uuid,
-);
-```
-
-## **Part 6: Terminal Operations**
-
-Before getting into Terminal class functions, you can also get a Terminal instance after calling the getTerminal method and passing the terminal's ID instead of using a TerminalConnection instance.
-
-### **Get Terminal**
-
-Retrieves a Terminal instance for a specific terminal ID.
-
-#### Dart
-
-```dart
-final fetchedTerminal = await _terminalSdk.getTerminal(
-  tid: 'your tid number',
-);
-```
+`amount` is the pre-tax basket total. The SDK charges `amount * taxPercentage / 10000` in tax, adds it and `surchargeAmount` to the amount the cardholder approves, and the receipt reports the subtotal, the fees, and the fee-inclusive total. Do not add the fees to `amount` yourself, or they will be charged twice.
 
 ### Purchase
 
-Initiates a purchase transaction by reading the card and sending the transaction.
+```dart
+import 'package:uuid/uuid.dart';
 
-#### Dart
+final intentUUID = const Uuid().v4();
+
+final response = await terminal.purchase(
+  intentUUID: intentUUID,
+  amount: 1455,                 // 14.55
+  scheme: PaymentScheme.VISA,
+  surchargeAmount: 100,         // optional
+  taxPercentage: 400,           // optional
+  callbacks: PurchaseCallbacks(
+    cardReaderCallbacks: CardReaderCallbacks(
+      onReadingStarted: () {},
+      onReaderReading: () {},
+      onCardReadSuccess: () {},
+      onReaderError: (message) {},
+    ),
+    onTransactionPurchaseCompleted: (res) {},
+    onSendTransactionFailure: (message) {},
+  ),
+);
+```
+
+### Purchase with tip
+
+```dart
+await terminal.purchaseWithTip(
+  intentUUID: const Uuid().v4(),
+  amount: 1455,
+  amountOther: 200,             // tip
+  scheme: PaymentScheme.VISA,
+  callbacks: PurchaseCallbacks(/* ... */),
+);
+```
+
+### Purchase with tokenization — *US only*
+
+Pass `withTokenization: true` to `purchase(...)` to tokenize the card while
+charging it; the resulting `tokenizationID` is returned on the USA/EPX receipt
+and can be charged later without a card present:
+
+```dart
+await terminal.purchase(
+  intentUUID: const Uuid().v4(),
+  amount: 1455,
+  withTokenization: true,
+  callbacks: PurchaseCallbacks(/* ... */),
+);
+
+await terminal.purchaseWithTokenization(
+  intentUUID: const Uuid().v4(),
+  tokenizationID: '<TOKENIZATION_ID>', // from a previous tokenized receipt
+  amount: 1455,
+  surchargeAmount: 100,         // optional
+  taxPercentage: 400,           // optional
+  callbacks: PurchaseCallbacks(
+    onTransactionPurchaseCompleted: (res) {},
+    onSendTransactionFailure: (message) {},
+  ),
+);
+```
+
+`purchaseWithTokenization` is card-less, so no `CardReaderCallbacks` fire. The
+operation is restricted to US terminals and fails locally on every other
+country.
+
+### Installments — *Android only*
+
+```dart
+await terminal.installments(
+  intentUUID: const Uuid().v4(),
+  amount: 1455,
+  numberOfInstallments: 3,
+  scheme: PaymentScheme.VISA,
+  callbacks: PurchaseCallbacks(/* ... */),
+);
+```
+
+### Refund
+
+```dart
+await terminal.refund(
+  intentUUID: '<ORIGINAL_INTENT_UUID>', // original purchase intent
+  refundUUID: const Uuid().v4(),        // new refund intent
+  amount: 1000,
+  scheme: PaymentScheme.VISA,
+  callbacks: RefundCallbacks(
+    onTransactionRefundCompleted: (res) {},
+    onSendTransactionFailure: (message) {},
+  ),
+);
+```
+
+### Open refund
+
+The SDK generates the refund UUID for you:
+
+```dart
+await terminal.openRefund(
+  intentUUID: '<INTENT_UUID>',
+  amount: 1000,
+  callbacks: OpenRefundCallbacks(/* ... */),
+);
+```
+
+### Tip an existing transaction
+
+```dart
+await terminal.tipTransaction(id: '<ORIGINAL_INTENT_ID>', amount: 200);
+```
+
+### Void purchase / refund — *Android only*
+
+```dart
+await terminal.purchaseVoid(
+  intentUUID: '<INTENT_UUID>',
+  amount: 1455,
+  callbacks: PurchaseVoidCallbacks(/* ... */),
+);
+
+await terminal.refundVoid(
+  intentUUID: '<INTENT_UUID>',
+  amount: 1000,
+  callbacks: RefundVoidCallbacks(/* ... */),
+);
+```
+
+### Reverse / cancel
+
+```dart
+await terminal.reverseTransaction(intent: '<INTENT_ID>');
+await terminal.cancelTransaction(id: '<INTENT_ID>');
+await terminal.dismissReaderUi();   // hide the reader UI programmatically
+```
+
+---
+
+## Reconciliation
+
+```dart
+final list = await terminal.getReconcileList(page: 1, pageSize: 10);
+final details = await terminal.getReconcileDetails(uuid: '<RECONCILE_ID>');
+final result = await terminal.reconcile();
+```
+
+---
+
+## Queries
+
+```dart
+final intents = await terminal.getIntentList(page: 1, pageSize: 10);
+final details = await terminal.getIntentDetails(intentUUID: '<INTENT_UUID>');
+```
+
+Every transactional response also exposes an `IntentDetails` object, so you can inspect the latest transactions and receipts without an extra network call.
+
+---
+
+## Authorizations
+
+Reserve funds, then capture, increment, or void them later. Use the returned authorization UUID for follow-up calls.
+
+```dart
+// Authorize
+final auth = await terminal.authorize(
+  uuid: const Uuid().v4(),
+  amount: 5000,
+  callbacks: AuthorizedCallbacks(/* ... */),
+);
+
+// Capture
+await terminal.captureAuthorization(
+  uuid: const Uuid().v4(),
+  authorizationUuid: '<AUTHORIZATION_UUID>',
+  amount: 5000,
+);
+
+// Increment
+await terminal.incrementAuthorization(
+  uuid: const Uuid().v4(),
+  authorizationUuid: '<AUTHORIZATION_UUID>',
+  amount: 500,
+);
+
+// Void
+await terminal.voidAuthorization(uuid: '<AUTHORIZATION_UUID>');
+
+// Pending total
+final pending = await terminal.getPendingTotal();
+```
+
+`captureAuthorizationWithTap` and `voidAuthorizationWithTap` provide the same results with live tap-to-pay reader updates on both platforms.
+
+---
+
+## Callbacks
+
+Transaction methods accept rich callback objects so you can react to reader and linking lifecycle events.
+
+**Card reader** (`CardReaderCallbacks`):
+
+```dart
+CardReaderCallbacks(
+  onReaderDisplayed: () {},
+  onReadingStarted: () {},
+  onReaderWaiting: () {},
+  onReaderReading: () {},
+  onReaderRetry: () {},
+  onPinEntering: () {},
+  onReaderFinished: () {},
+  onReaderClosed: () {},
+  onReaderDismissed: () {},
+  onCardReadSuccess: () {},
+  onCardReadFailure: (message) {},
+  onReaderError: (message) {},
+);
+```
+
+**Linking** (`LinkingCallbacks`, primarily iOS):
+
+```dart
+LinkingCallbacks(
+  onLinkingStarted: () {},
+  onPreparingToLink: (data) {},
+  onLinkingProgress: (progress) {},
+  onLinkingCompleted: (data) {},
+  onRelinking: (data) {},
+  onLinkingFailure: (error) {},
+);
+```
+
+Each transaction type also has its own completion/failure callback (e.g. `onTransactionPurchaseCompleted`, `onTransactionRefundCompleted`).
+
+---
+
+## Error Handling
+
+Async methods throw `NearpayException` on failure. Wrap calls in `try/catch`:
 
 ```dart
 try {
-  setState(() => _status = "Purchasing...");
-
-  // Define the callbacks for purchase events
-  final callbacks = PurchaseCallbacks(
-    cardReaderCallbacks: CardReaderCallbacks(
-      onReadingStarted: () {
-        setState(() => _status = "Reading started...");
-      },
-      onReaderWaiting: () {
-        setState(() => _status = "Reader waiting...");
-      },
-      onReaderReading: () {
-        setState(() => _status = "Reader reading...");
-      },
-      onReaderRetry: () {
-        setState(() => _status = "Reader retrying...");
-      },
-      onPinEntering: () {
-        setState(() => _status = "Entering PIN...");
-      },
-      onReaderFinished: () {
-        setState(() => _status = "Reader finished.");
-      },
-      onReaderError: (message) {
-        setState(() => _status = "Reader error: $message");
-      },
-      onCardReadSuccess: () {
-        setState(() => _status = "Card read successfully.");
-      },
-      onCardReadFailure: (message) {
-        setState(() => _status = "Card read failure: $message");
-      },
-    ),
-    onSendTransactionFailure: (message) {
-      setState(() => _status = "Transaction failed: $message");
-    },
-    onSendTransactionSuccessData: (tr.TransactionResponse response) {
-      setState(() => _status = "Purchase Successful!");
-      _showTransactionDialog(response);
-    },
-  );
-
-  transactionUuid = const Uuid().v4(); // Generate a unique transaction UUID for the purchase, this is developer's responsibility
-
-  final purchaseResponse = await _connectedTerminal!.purchase(
-    amount: amount,
-    scheme: scheme,
-    callbacks: callbacks,
-    transactionUuid: transactionUuid!,
-  );
-
-  print("Purchase Response: $purchaseResponse");
-} catch (e) {
-  setState(() => _status = "Error in purchase: $e");
+  await terminal.purchase(/* ... */);
+} on NearpayException catch (e) {
+  print('NearPay error: ${e.message}');
 }
 ```
 
-### **Refund**
+Features that are unavailable on the current platform also throw `NearpayException` with a descriptive message.
 
-Initiates a refund transaction by reading the card and sending the transaction.
+---
 
-#### Dart
+## Utilities
 
-```dart
-try {
-  var callback = RefundCallbacks(
-    cardReaderCallbacks: CardReaderCallbacks(
-      onReadingStarted: () {
-        setState(() => _status = "Reading started...");
-      },
-      onReaderWaiting: () {
-        setState(() => _status = "Reader waiting...");
-      },
-      onReaderReading: () {
-        setState(() => _status = "Reader reading...");
-      },
-      onReaderRetry: () {
-        setState(() => _status = "Reader retrying...");
-      },
-      onPinEntering: () {
-        setState(() => _status = "Entering PIN...");
-      },
-      onReaderFinished: () {
-        setState(() => _status = "Reader finished.");
-      },
-      onReaderError: (message) {
-        setState(() => _status = "Reader error: $message");
-      },
-      onCardReadSuccess: () {
-        setState(() => _status = "Card read successfully.");
-      },
-      onCardReadFailure: (message) {
-        setState(() => _status = "Card read failure: $message");
-      },
-    ),
-    onSendTransactionSuccess: (response) {
-      setState(() => _status = "Refund Successful!");
-      _showTransactionDialog(response);
-    },
-    onSendTransactionFailure: (message) {
-      setState(() => _status = "Refund failed: $message");
-    },
-  );
-
-  var refundUuid = const Uuid().v4(); // Generate a unique refund UUID for the refund, this is developer's responsibility
-
-  setState(() => _status = "Refunding...");
-  final result = await _connectedTerminal?.refund(
-    refundUuid: refundUuid,
-    transactionUuid: transactionUuid!,
-    amount: amount,
-    scheme: _selectedScheme,
-    callbacks: callback,
-  );
-
-  setState(() => _status = "Refund Successful: ${result.toString()}");
-} catch (e) {
-  setState(() => _status = "Error in refund: $e");
-}
-```
-
-### **Get Transaction Details**
-
-Retrieves the details of a specific transaction by providing the transaction ID.
-
-#### Dart
+### Generate QR code
 
 ```dart
-final transactionDetails = await _connectedTerminal?.getTransactionDetails(
-  transactionUuid: "your-transaction-uuid",
+final qr = await terminal.generateQrCode(
+  id: const Uuid().v4(),
+  amount: '1455',
+);
+final status = await terminal.qrStatus(transactionId: qr.transactionId);
+
+await terminal.qrVoid(
+  intentId: const Uuid().v4(),
+  originalIntentId: qr.transactionId,
+  callbacks: QrVoidCallbacks(
+    onQrVoidSuccess: (status) {},
+    onQrVoidFailure: (error) {},
+  ),
 );
 ```
 
-### **Get Transactions List**
-
-Retrieves a paginated list of transactions.
-
-#### Dart
+### Render a receipt to an image — *Android only*
 
 ```dart
-final transactionList = await _connectedTerminal?.getTransactionList(
-  page: 1,
-  pageSize: 10,
+final Uint8List bytes = await receipt.toImage(receiptWidth: 384, fontSize: 12);
+
+final reconciliation = await terminal.getReconciliation(
+  uuid: '<RECONCILIATION_UUID>',
+);
+final Uint8List reconciliationBytes = await reconciliation.toImage(
+  receiptWidth: 384,
+  fontSize: 12,
 );
 ```
 
-### **Reconcile Transactions**
+---
 
-Reconciles a terminal's unreconciled transactions.
+## Platform Availability
 
-#### Dart
+The following are **Android only** and throw `NearpayException` on iOS:
 
-```dart
-await _connectedTerminal?.reconcile();
-```
+- `installments`, `purchaseVoid`, `refundVoid`
+- `routingLookup`, `routingExecute`, `routingInstallments`, `getRoutingProfile`
+- receipt `toImage`, `printMadaReceipt`, `getUsers`
+- `shareInvoice`, NFC receipt share, `createProxyRoom`
 
-### **Get Reconciliation List**
+The following are **iOS only** and throw `NearpayException` on Android:
 
-Retrieves a paginated list of reconciliations.
+- `authenticator`
+- `getProduct`
 
-#### Dart
-
-```dart
-final reconciliationList = await _connectedTerminal?.getReconcileList(
-  page: 1,
-  pageSize: 10,
-);
-```
-
-### **Get Reconciliation Details**
-
-Retrieves the details of a specific reconciliation by providing the reconciliation ID.
-
-#### Dart
-
-```dart
-final reconcileDetails = await _connectedTerminal?.getReconcileDetails(
-  uuid: reconcileId ?? "",
-);
-```
-
-### **Reverse**
-
-Reverses a transaction by providing the transaction ID.
-
-#### Dart
-
-```dart
-final reverseResponse = await _connectedTerminal!.reverse(
-  transitionId: transactionUuid!,
-);
-```
-
-### **Cancel**
-
-Cancels a transaction by providing the transaction ID.
-
-#### Dart
-
-```dart
-final cancelResponse = await _connectedTerminal!.cancel(
-  transactionUUID: transactionUuid!,
-);
-```
-```
+Always test on a physical device.

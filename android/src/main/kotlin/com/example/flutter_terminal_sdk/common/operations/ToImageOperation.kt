@@ -6,10 +6,12 @@ import android.os.Looper
 import com.example.flutter_terminal_sdk.common.NearpayProvider
 import com.example.flutter_terminal_sdk.common.filter.ArgsFilter
 import com.example.flutter_terminal_sdk.common.status.ResponseHandler
+import com.example.flutter_terminal_sdk.common.operations.BaseOperation
 import io.nearpay.terminalsdk.data.dto.TransactionResponse
 import io.nearpay.terminalsdk.utils.BitmapListener
 import io.nearpay.terminalsdk.utils.toImage
 import kotlinx.coroutines.*
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.*
 import timber.log.Timber
 import java.io.ByteArrayOutputStream
@@ -20,6 +22,7 @@ class ToImageOperation(provider: NearpayProvider) : BaseOperation(provider) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val mainHandler = Handler(Looper.getMainLooper())
 
+    @OptIn(ExperimentalSerializationApi::class)
     private val json = Json {
         ignoreUnknownKeys = true
         isLenient = true
@@ -28,17 +31,18 @@ class ToImageOperation(provider: NearpayProvider) : BaseOperation(provider) {
     }
 
     override fun run(filter: ArgsFilter, response: (Map<String, Any>) -> Unit) {
-        val activity = provider.activity
+        val activity = provider.activity as? android.app.Activity
         if (activity == null) {
+            val errorResponse = ResponseHandler.error("NO_ACTIVITY", "Activity is null")
             mainHandler.post {
-                response(ResponseHandler.error("NO_ACTIVITY", "Activity is null"))
+                response(errorResponse)
             }
             return
         }
 
         val receiptWidth = filter.getInt("receiptWidth")
         val fontSize = filter.getInt("fontSize")
-        val receiptPayload = filter.getString("receiptPayload")
+        val receiptPayload = filter.getString("receiptPayload") as? String
         if (receiptPayload.isNullOrBlank()) {
             mainHandler.post {
                 response(ResponseHandler.error("MISSING_receiptPayload", "receiptPayload is required"))
@@ -46,16 +50,22 @@ class ToImageOperation(provider: NearpayProvider) : BaseOperation(provider) {
             return
         }
 
-        // If your payload sometimes misses required fields (e.g., merchant.category_code),
-        // you can uncomment this line to patch it before decoding.
-        // val patchedPayload = patchMissingFields(receiptPayload)
-        val patchedPayload = receiptPayload
-
-        val receipt: TransactionResponse.Event.ReceiptData = try {
-            json.decodeFromString(
+        val renderImage: (BitmapListener) -> Unit = try {
+            // Nearpay toImage utility only supports ReceiptData.
+            // Both transaction and reconciliation receipts should be decoded as ReceiptData for rendering.
+            val receipt = json.decodeFromString(
                 TransactionResponse.Event.ReceiptData.serializer(),
-                patchedPayload
-            ).also { Timber.d("Receipt Payload decoded") }
+                receiptPayload
+            )
+            val action: (BitmapListener) -> Unit = { listener ->
+                receipt.toImage(
+                    context = activity,
+                    receiptWidth = receiptWidth,
+                    fontSize = fontSize,
+                    listener = listener
+                )
+            }
+            action
         } catch (t: Throwable) {
             Timber.e(t, "Failed to decode receipt payload")
             mainHandler.post {
@@ -64,7 +74,6 @@ class ToImageOperation(provider: NearpayProvider) : BaseOperation(provider) {
             return
         }
 
-        // Ensure we only ever reply once, even if the SDK calls the listener multiple times
         val replied = AtomicBoolean(false)
         fun replyOnce(map: Map<String, Any>) {
             if (replied.compareAndSet(false, true)) {
@@ -75,17 +84,13 @@ class ToImageOperation(provider: NearpayProvider) : BaseOperation(provider) {
         }
 
         try {
-            receipt.toImage(
-                context = activity,
-                receiptWidth = receiptWidth,
-                fontSize = fontSize,
-                listener = BitmapListener { bitmap ->
+            renderImage(
+                BitmapListener { bitmap ->
                     if (bitmap == null) {
                         replyOnce(ResponseHandler.error("BITMAP_NULL", "SDK returned null bitmap"))
                         return@BitmapListener
                     }
 
-                    // Heavy work off main thread (PNG compression)
                     scope.launch {
                         try {
                             val pngBytes = bitmapToPng(bitmap)
@@ -111,14 +116,12 @@ class ToImageOperation(provider: NearpayProvider) : BaseOperation(provider) {
 
     private fun bitmapToPng(bitmap: Bitmap): ByteArray {
         val stream = ByteArrayOutputStream()
-        if (!bitmap.compress(Bitmap.CompressFormat.PNG, /*quality ignored*/100, stream)) {
+        if (!bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)) {
             throw IllegalStateException("Bitmap.compress returned false")
         }
         return stream.toByteArray()
     }
 
-    // Optional: patch JSON if backend sometimes omits required fields.
-    // Adjust as needed for your schema.
     @Suppress("unused")
     private fun patchMissingFields(raw: String): String {
         val root = runCatching { json.parseToJsonElement(raw) as? JsonObject }.getOrNull() ?: return raw

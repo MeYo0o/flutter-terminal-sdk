@@ -3,6 +3,7 @@ package com.example.flutter_terminal_sdk.common.operations
 import com.example.flutter_terminal_sdk.common.NearpayProvider
 import com.example.flutter_terminal_sdk.common.filter.ArgsFilter
 import com.example.flutter_terminal_sdk.common.status.ResponseHandler
+import com.example.flutter_terminal_sdk.common.toJsonMap
 import com.google.gson.Gson
 import io.nearpay.terminalsdk.data.dto.CaptureResponse
 import io.nearpay.terminalsdk.listeners.CaptureAuthorizationListener
@@ -19,7 +20,6 @@ class CaptureAuthorizationOperation(provider: NearpayProvider) : BaseOperation(p
         val amount = filter.getLong("amount")
             ?: return response(ResponseHandler.error("MISSING_AMOUNT", "Amount is required"))
 
-
         val uuid = filter.getString("uuid")
             ?: return response(ResponseHandler.error("MISSING_UUID", "UUID is required"))
 
@@ -30,7 +30,6 @@ class CaptureAuthorizationOperation(provider: NearpayProvider) : BaseOperation(p
                     "Authorization UUID is required"
                 )
             )
-
 
         val terminal =
             provider.activity?.let { provider.terminalSdk?.getTerminal(it, terminalUUID) }
@@ -44,14 +43,22 @@ class CaptureAuthorizationOperation(provider: NearpayProvider) : BaseOperation(p
                 override fun onCaptureAuthorizationCompleted(captureAuthorization: CaptureResponse) {
                     Timber.tag("CaptureAuthorizationOperation")
                         .d("onCaptureAuthorizationCompleted $captureAuthorization")
-                    val jsonString = gson.toJson(captureAuthorization)
-                    val map = gson.fromJson(jsonString, Map::class.java) as Map<*, *>
-                    response(
-                        ResponseHandler.success(
-                            "Capture authorization completed successfully",
-                            map
+                    val map = gson.toJsonMap(captureAuthorization)
+                    if (map == null) {
+                        response(
+                            ResponseHandler.error(
+                                "SERIALIZE_FAILED",
+                                "Failed to serialize capture authorization"
+                            )
                         )
-                    )
+                    } else {
+                        response(
+                            ResponseHandler.success(
+                                "Capture authorization completed successfully",
+                                map
+                            )
+                        )
+                    }
                 }
 
                 override fun onCaptureAuthorizationFailure(captureAuthorizationFailure: CaptureAuthorizationFailure) {
@@ -59,9 +66,10 @@ class CaptureAuthorizationOperation(provider: NearpayProvider) : BaseOperation(p
                     Timber.tag("CaptureAuthorizationOperation")
                         .d("onCaptureAuthorizationFailure $captureAuthorizationFailure")
                     response(
-                        ResponseHandler.error(
+                        ResponseHandler.errorFromFailure(
                             "CAPTURE_AUTHORIZATION_FAILURE",
-                            captureAuthorizationFailure.toString()
+                            captureAuthorizationFailure,
+                            "Capture authorization failed"
                         )
                     )
                 }
@@ -70,6 +78,5 @@ class CaptureAuthorizationOperation(provider: NearpayProvider) : BaseOperation(p
         )
 
     }
-
 
 }

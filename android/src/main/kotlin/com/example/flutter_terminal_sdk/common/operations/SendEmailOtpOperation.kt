@@ -15,7 +15,11 @@ class SendEmailOtpOperation(provider: NearpayProvider) : BaseOperation(provider)
             ResponseHandler.error("MISSING_EMAIL", "Email is required")
         )
 
-        provider.terminalSdk?.sendOTP(EmailLogin(email), object : SendOTPEmailListener {
+        val terminalSdk = provider.terminalSdk ?: return response(
+            ResponseHandler.error("NOT_INITIALIZED", "TerminalSDK is not initialized. Call initialize first.")
+        )
+
+        terminalSdk.sendOTP(EmailLogin(email), object : SendOTPEmailListener {
             override fun onSendOTPEmailSuccess(otpResponse: OtpResponse) {
                 Timber.d("OTP sent successfully: $otpResponse")
                 response(ResponseHandler.success("OTP sent successfully"))
@@ -23,7 +27,7 @@ class SendEmailOtpOperation(provider: NearpayProvider) : BaseOperation(provider)
 
             override fun onSendOTPEmailFailure(otpEmailFailure: OTPEmailFailure) {
                 Timber.e("OTP email failure: $otpEmailFailure")
-                response(ResponseHandler.error("OTP_FAILURE", otpEmailFailure.toString()))
+                response(ResponseHandler.errorFromFailure("OTP_FAILURE", otpEmailFailure, "Failed to send OTP"))
             }
         })
     }

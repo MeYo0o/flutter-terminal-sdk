@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    compileSdk = 35
+    compileSdk = 36
     namespace = "com.example.flutter_terminal_sdk"
 
     defaultConfig {
@@ -32,6 +32,11 @@ android {
     }
 
     testOptions {
+        // The bridge classes touch android.os / android.util for logging on paths
+        // the unit tests do not care about; stubbed returns keep those from
+        // throwing "not mocked" instead of exercising the logic under test.
+        unitTests.returnDefaultValues = true
+
         unitTests.all {
             useJUnitPlatform()
 
@@ -46,16 +51,20 @@ android {
 }
 
 dependencies {
-//    implementation("io.flutter:flutter_embedding_debug:3.9.0")
-    // Kotlin stdlib
-
     implementation "org.jetbrains.kotlin:kotlin-stdlib:2.0.21"
-    implementation "io.nearpay:terminalsdk-release:0.0.201"
+    implementation "io.nearpay:terminalsdk-release:0.2.6"
     implementation 'com.google.android.gms:play-services-location:21.3.0'
     implementation 'com.jakewharton.timber:timber:5.0.1'
     implementation 'com.google.code.gson:gson:2.13.2'
 
     // Testing
-    testImplementation "org.jetbrains.kotlin:kotlin-test:2.0.21"
-    testImplementation "org.mockito:mockito-core:5.21.0"
+    testImplementation "org.jetbrains.kotlin:kotlin-test-junit5:2.0.21"
+    testImplementation "org.junit.jupiter:junit-jupiter:5.10.2"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher:1.10.2"
+    // MockK over Mockito: the bridge's collaborators (NearpayProvider, Activity,
+    // MethodChannel) are final Kotlin/Android classes.
+    testImplementation "io.mockk:mockk:1.13.10"
+    // Real org.json on the unit-test classpath - the android.jar stub returns
+    // null from every method, and NativeErrorPayload serializes through it.
+    testImplementation "org.json:json:20240303"
 }
